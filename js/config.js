@@ -8,6 +8,59 @@ const CONFIG = {
     MAX_SANITY: 100,
     LOW_SANITY_THRESHOLD: 20,
     
+    // v1.3 心态自然衰减（按阶段）
+    SANITY_DECAY: {
+        ACCUMULATE: 2,   // 大一大二：-2/月
+        INTERNSHIP: 5,   // 大三：-5/月
+        DECISION: 5      // 大四：-5/月
+    },
+    
+    // v1.3 基础生活开销（每月）
+    MONTHLY_EXPENSE: 800,
+    
+    // v1.3 地理标签配置
+    GEOGRAPHY: {
+        'near': {
+            name: '同城-近距离',
+            icon: '🏠',
+            probability: 0.4,
+            energyPenalty: 0,
+            sanityPenalty: 0,
+            rentCost: 0,
+            description: '通勤方便，无额外开销'
+        },
+        'far': {
+            name: '同城-远距离',
+            icon: '🚌',
+            probability: 0.3,
+            energyPenalty: 10,
+            sanityPenalty: 5,
+            rentCost: 0,
+            rentOption: 2500,
+            description: '通勤折磨，可选择租房'
+        },
+        'remote': {
+            name: '异地',
+            icon: '✈️',
+            probability: 0.3,
+            energyPenalty: 0,
+            sanityPenalty: 0,
+            rentCost: [2000, 4000],
+            description: '必须租房，开销较大'
+        }
+    },
+    
+    // v1.3 岗位类型配置
+    JOB_TYPES: {
+        'core_dev': { name: '核心研发', salaryModifier: 1.2 },
+        'algorithm': { name: '算法岗', salaryModifier: 1.2 },
+        'frontend': { name: '前端开发', salaryModifier: 1.0 },
+        'backend': { name: '后端开发', salaryModifier: 1.05 },
+        'test': { name: '测试开发', salaryModifier: 0.95 },
+        'operation': { name: '运营', salaryModifier: 0.9 },
+        'product': { name: '产品', salaryModifier: 0.95 }
+    },
+    
     // 阶段划分
     PHASES: {
         ACCUMULATE: { start: 1, end: 24, name: '积累期', icon: '📚' },
@@ -74,43 +127,51 @@ const CONFIG = {
         }
     },
     
-    // 家庭背景配置
+    // 家庭背景配置（v1.3 新增经济属性）
     FAMILIES: {
         '富二代': {
             name: '富二代',
-            buff: '心态恢复速度 +50%',
+            buff: '初始5万 + 每月5000',
             sanityRecoveryBonus: 0.5,
             energyBonus: 0,
             softskillBonus: 0,
+            initialMoney: 50000,
+            monthlyAllowance: 5000,
             specialEvent: null,
-            description: '家里有矿，心态稳定'
+            description: '家里有矿，财务自由'
         },
         '中产家庭': {
             name: '中产家庭',
-            buff: '初始软技能 +10',
+            buff: '初始1万 + 每月2500',
             sanityRecoveryBonus: 0,
             energyBonus: 0,
             softskillBonus: 10,
+            initialMoney: 10000,
+            monthlyAllowance: 2500,
             specialEvent: null,
             description: '见过世面，情商在线'
         },
         '互联网世家': {
             name: '互联网世家',
-            buff: '大三30%概率触发内推',
+            buff: '初始2万 + 内推机会',
             sanityRecoveryBonus: 0,
             energyBonus: 0,
             softskillBonus: 0,
+            initialMoney: 20000,
+            monthlyAllowance: 3000,
             specialEvent: { type: 'referral', chance: 0.3, triggerMonth: 25 },
             description: '人脉资源，内推机会'
         },
         '工薪阶层': {
             name: '工薪阶层',
-            buff: '精力上限 +20',
+            buff: '初始2000 + 每月1500',
             sanityRecoveryBonus: 0,
             energyBonus: 20,
             softskillBonus: 0,
+            initialMoney: 2000,
+            monthlyAllowance: 1500,
             specialEvent: null,
-            description: '吃苦耐劳，更能肝'
+            description: '吃苦耐劳，精打细算'
         }
     },
     
@@ -183,15 +244,43 @@ const ACTIONS = {
         },
         available: () => true
     },
-    rest: {
-        id: 'rest',
-        name: '😴 休息放松',
-        description: '打游戏、追剧、睡觉',
-        energyCost: 15,
+    // v1.3 休息分级系统
+    sleep: {
+        id: 'sleep',
+        name: '😴 宿舍睡觉',
+        description: '免费休息，恢复精力和少量心态',
+        energyCost: 0,
+        moneyCost: 0,
         effects: {
-            sanity: { base: 15, variance: 5 }
+            sanity: { base: 10, variance: 3 }
         },
+        restoreEnergy: true,
         available: () => true
+    },
+    entertainment: {
+        id: 'entertainment',
+        name: '🎮 普通娱乐',
+        description: '吃顿好的/看电影（消耗200元）',
+        energyCost: 0,
+        moneyCost: 200,
+        effects: {
+            sanity: { base: 30, variance: 5 }
+        },
+        restoreEnergy: true,
+        available: (game) => game.character.money >= 200
+    },
+    luxuryTrip: {
+        id: 'luxuryTrip',
+        name: '🏖️ 豪华旅游',
+        description: '彻底放松（消耗2000元+1个月）',
+        energyCost: 0,
+        moneyCost: 2000,
+        effects: {
+            sanity: { base: 100, variance: 0 }
+        },
+        restoreEnergy: true,
+        skipMonth: true,
+        available: (game) => game.character.money >= 2000
     },
     project: {
         id: 'project',
@@ -500,32 +589,33 @@ const INTERVIEW_QUESTIONS = {
         }
     ]
 };
-
-// 公司配置
+// 公司配置 (v1.3 日薪体系重构)
+// T1大厂: 200-500元/天, T2中厂: 100-180元/天, T3小厂: 50-100元/天
 const COMPANIES = {
     internship: [
-        { name: '字节跳动', tier: 'T1', difficulty: 3, salaryRange: [400, 600], projectBonus: 50, resumeValue: '💼 字节实习' },
-        { name: '阿里巴巴', tier: 'T1', difficulty: 3, salaryRange: [350, 550], projectBonus: 45, resumeValue: '💼 阿里实习' },
-        { name: '腾讯', tier: 'T1', difficulty: 3, salaryRange: [380, 580], projectBonus: 48, resumeValue: '💼 腾讯实习' },
-        { name: '美团', tier: 'T1.5', difficulty: 2.5, salaryRange: [300, 450], projectBonus: 40, resumeValue: '💼 美团实习' },
-        { name: '京东', tier: 'T1.5', difficulty: 2.5, salaryRange: [280, 420], projectBonus: 38, resumeValue: '?? 京东实习' },
-        { name: '快手', tier: 'T1.5', difficulty: 2.5, salaryRange: [350, 500], projectBonus: 42, resumeValue: '💼 快手实习' },
-        { name: '小红书', tier: 'T2', difficulty: 2, salaryRange: [320, 480], projectBonus: 35, resumeValue: '💼 小红书实习' },
-        { name: '百度', tier: 'T2', difficulty: 2, salaryRange: [250, 380], projectBonus: 30, resumeValue: '💼 百度实习' },
-        { name: '网易', tier: 'T2', difficulty: 2, salaryRange: [280, 400], projectBonus: 32, resumeValue: '💼 网易实习' },
-        { name: '某创业公司', tier: 'T3', difficulty: 1.5, salaryRange: [200, 300], projectBonus: 25, resumeValue: '💼 创业公司实习' }
+        { name: '字节跳动', tier: 'T1', difficulty: 3, salaryRange: [350, 500], projectBonus: 50, resumeValue: '💼 字节实习', jobTypes: ['algorithm', 'backend', 'frontend'] },
+        { name: '阿里巴巴', tier: 'T1', difficulty: 3, salaryRange: [300, 480], projectBonus: 45, resumeValue: '💼 阿里实习', jobTypes: ['backend', 'algorithm', 'product'] },
+        { name: '腾讯', tier: 'T1', difficulty: 3, salaryRange: [320, 500], projectBonus: 48, resumeValue: '💼 腾讯实习', jobTypes: ['backend', 'frontend', 'core_dev'] },
+        { name: '美团', tier: 'T1', difficulty: 2.8, salaryRange: [280, 420], projectBonus: 40, resumeValue: '💼 美团实习', jobTypes: ['backend', 'frontend', 'test'] },
+        { name: '快手', tier: 'T1', difficulty: 2.8, salaryRange: [300, 450], projectBonus: 42, resumeValue: '💼 快手实习', jobTypes: ['algorithm', 'backend', 'frontend'] },
+        { name: '小红书', tier: 'T2', difficulty: 2.2, salaryRange: [140, 180], projectBonus: 35, resumeValue: '💼 小红书实习', jobTypes: ['frontend', 'backend', 'operation'] },
+        { name: '百度', tier: 'T2', difficulty: 2, salaryRange: [120, 170], projectBonus: 30, resumeValue: '💼 百度实习', jobTypes: ['backend', 'algorithm', 'test'] },
+        { name: '网易', tier: 'T2', difficulty: 2, salaryRange: [130, 175], projectBonus: 32, resumeValue: '💼 网易实习', jobTypes: ['backend', 'frontend', 'product'] },
+        { name: '某B轮公司', tier: 'T2', difficulty: 1.8, salaryRange: [100, 150], projectBonus: 28, resumeValue: '💼 独角兽实习', jobTypes: ['frontend', 'backend', 'operation'] },
+        { name: '某创业公司', tier: 'T3', difficulty: 1.5, salaryRange: [50, 100], projectBonus: 20, resumeValue: '💼 创业公司实习', jobTypes: ['frontend', 'backend', 'test'] },
+        { name: '某外包公司', tier: 'T3', difficulty: 1.2, salaryRange: [60, 90], projectBonus: 15, resumeValue: '💼 外包实习', jobTypes: ['test', 'operation', 'backend'] }
     ],
     fulltime: [
-        { name: '字节跳动', tier: 'T1', difficulty: 3.5, salaryRange: [30, 50], projectBonus: 0, resumeValue: '🎉 字节Offer' },
-        { name: '阿里巴巴', tier: 'T1', difficulty: 3.5, salaryRange: [28, 45], projectBonus: 0, resumeValue: '🎉 阿里Offer' },
-        { name: '腾讯', tier: 'T1', difficulty: 3.5, salaryRange: [30, 48], projectBonus: 0, resumeValue: '🎉 腾讯Offer' },
-        { name: '华为', tier: 'T1', difficulty: 3, salaryRange: [25, 40], projectBonus: 0, resumeValue: '🎉 华为Offer' },
-        { name: '美团', tier: 'T1.5', difficulty: 3, salaryRange: [25, 38], projectBonus: 0, resumeValue: '🎉 美团Offer' },
-        { name: '京东', tier: 'T1.5', difficulty: 2.8, salaryRange: [22, 35], projectBonus: 0, resumeValue: '🎉 京东Offer' },
-        { name: '小米', tier: 'T2', difficulty: 2.5, salaryRange: [20, 32], projectBonus: 0, resumeValue: '🎉 小米Offer' },
-        { name: '百度', tier: 'T2', difficulty: 2.5, salaryRange: [22, 35], projectBonus: 0, resumeValue: '?? 百度Offer' },
-        { name: '某中厂', tier: 'T2', difficulty: 2, salaryRange: [18, 28], projectBonus: 0, resumeValue: '🎉 中厂Offer' },
-        { name: '某小厂', tier: 'T3', difficulty: 1.5, salaryRange: [12, 20], projectBonus: 0, resumeValue: '🎉 小厂Offer' }
+        { name: '字节跳动', tier: 'T1', difficulty: 3.5, salaryRange: [35, 55], projectBonus: 0, resumeValue: '🎉 字节Offer', jobTypes: ['algorithm', 'backend', 'frontend'] },
+        { name: '阿里巴巴', tier: 'T1', difficulty: 3.5, salaryRange: [32, 50], projectBonus: 0, resumeValue: '🎉 阿里Offer', jobTypes: ['backend', 'algorithm', 'product'] },
+        { name: '腾讯', tier: 'T1', difficulty: 3.5, salaryRange: [35, 52], projectBonus: 0, resumeValue: '🎉 腾讯Offer', jobTypes: ['backend', 'frontend', 'core_dev'] },
+        { name: '华为', tier: 'T1', difficulty: 3, salaryRange: [28, 42], projectBonus: 0, resumeValue: '🎉 华为Offer', jobTypes: ['core_dev', 'backend', 'test'] },
+        { name: '美团', tier: 'T1', difficulty: 3, salaryRange: [28, 40], projectBonus: 0, resumeValue: '🎉 美团Offer', jobTypes: ['backend', 'frontend', 'test'] },
+        { name: '京东', tier: 'T2', difficulty: 2.5, salaryRange: [22, 32], projectBonus: 0, resumeValue: '🎉 京东Offer', jobTypes: ['backend', 'test', 'operation'] },
+        { name: '小米', tier: 'T2', difficulty: 2.5, salaryRange: [20, 30], projectBonus: 0, resumeValue: '🎉 小米Offer', jobTypes: ['frontend', 'backend', 'product'] },
+        { name: '百度', tier: 'T2', difficulty: 2.3, salaryRange: [22, 32], projectBonus: 0, resumeValue: '🎉 百度Offer', jobTypes: ['backend', 'algorithm', 'test'] },
+        { name: '某中厂', tier: 'T2', difficulty: 2, salaryRange: [18, 26], projectBonus: 0, resumeValue: '🎉 中厂Offer', jobTypes: ['frontend', 'backend', 'test'] },
+        { name: '某小厂', tier: 'T3', difficulty: 1.5, salaryRange: [12, 18], projectBonus: 0, resumeValue: '🎉 小厂Offer', jobTypes: ['frontend', 'backend', 'operation'] }
     ]
 };
 

@@ -388,6 +388,40 @@ body {
     color: var(--text-secondary);
 }
 
+/* 金钱样式 */
+.money-value {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* 省吃俭用状态警告样式 */
+.money-warning {
+    color: var(--danger-color);
+    animation: moneyPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes moneyPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 地理标签图标样式（用于Offer卡片） */
+.location-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(74, 144, 217, 0.2);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+
+.location-tag::before {
+    content: '📍';
+}
+
 /* 属性面板 */
 .stat-item {
     display: flex;

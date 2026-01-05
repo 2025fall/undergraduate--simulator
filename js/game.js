@@ -20,6 +20,7 @@ class Game {
         this.forcedEnding = null;  // 强制结局（如保研）
         this.hadLowSanity = false;  // 曾经低心态（用于成就）
         this.isGameOver = false;
+        this.isInternship = false;  // v1.3 是否正在实习
         
         // 候选角色
         this.candidates = [];
@@ -83,10 +84,39 @@ class Game {
         this.character.restoreEnergy();
         results.push('精力已恢复');
         
-        // 每月自然心态变化
-        const sanityChange = Math.floor(Math.random() * 5) - 2;  // -2 到 +2
-        if (sanityChange !== 0) {
-            this.character.modifySanity(sanityChange);
+        // v1.3 心态自然衰减（按阶段）
+        const phase = this.getCurrentPhase();
+        const sanityDecay = CONFIG.SANITY_DECAY[phase] || 2;
+        this.character.modifySanity(-sanityDecay);
+        results.push(`心态自然衰减 -${sanityDecay}`);
+        
+        // v1.3 经济结算
+        const financeResult = this.character.processMonthlyFinance();
+        results.push(...financeResult.results);
+        
+        // v1.3 通勤惩罚（如果正在实习且远距离通勤）
+        if (this.isInternship && this.character.commuteType === 'far' && !this.character.isRenting) {
+            this.character.modifySanity(-CONFIG.GEOGRAPHY.far.sanityPenalty);
+            results.push(`通勤折磨 心态 -${CONFIG.GEOGRAPHY.far.sanityPenalty}`);
+        }
+        
+        // 检查是否需要触发借钱事件
+        if (financeResult.triggerBorrowEvent) {
+            this.eventSystem.addEvent({
+                id: 'borrow_money',
+                title: '💸 向家里要钱',
+                description: '你的钱花光了，不得不向家里开口要钱。这让你感到很羞耻...',
+                choices: [
+                    {
+                        text: '硬着头皮开口',
+                        effects: { sanity: -20, money: 3000 }
+                    },
+                    {
+                        text: '开启省吃俭用模式',
+                        effects: { sanity: -10 }
+                    }
+                ]
+            });
         }
         
         // 检查随机事件
@@ -114,23 +144,58 @@ class Game {
     }
     
     // 跳过多个月（实习）
-    skipMonths(months) {
+    skipMonths(months, isInternship = false) {
+        const results = [];
+        
         for (let i = 0; i < months; i++) {
             this.currentMonth++;
             this.character.restoreEnergy();
             
-            // 实习期间的心态恢复
-            this.character.modifySanity(3);
+            if (isInternship && this.internshipCompany) {
+                // v1.3 实习期间的经济结算
+                // 获取实习工资（日薪 * 22个工作日）
+                const dailySalary = this.internshipCompany.salary || 200;
+                const monthlyIncome = dailySalary * 22;
+                this.character.modifyMoney(monthlyIncome);
+                results.push(`实习工资 +${monthlyIncome}元`);
+                
+                // 扣除生活开销
+                const expense = this.character.getMonthlyExpense();
+                this.character.modifyMoney(-expense);
+                
+                // v1.3 实习期间可能触发PUA事件
+                if (Math.random() < 0.2) {
+                    const puaDamage = 10 + Math.floor(Math.random() * 10);
+                    this.character.modifySanity(-puaDamage);
+                    results.push(`实习遭遇PUA 心态 -${puaDamage}`);
+                } else {
+                    // 正常实习心态变化
+                    this.character.modifySanity(3);
+                }
+                
+                // 通勤惩罚
+                if (this.character.commuteType === 'far' && !this.character.isRenting) {
+                    this.character.modifySanity(-CONFIG.GEOGRAPHY.far.sanityPenalty);
+                }
+            } else {
+                // 非实习的跳过（如豪华旅游）
+                this.character.modifySanity(3);
+            }
             
             if (this.currentMonth >= CONFIG.TOTAL_MONTHS) {
                 break;
             }
         }
         
-        // 清除实习offer状态
-        this.hasInternshipOffer = false;
+        // 清除实习状态
+        if (isInternship) {
+            this.hasInternshipOffer = false;
+            this.isInternship = false;
+            this.character.commuteType = null;
+            this.character.setRenting(false, 0);
+        }
         
-        return this.checkEndConditions();
+        return { results, endCheck: this.checkEndConditions() };
     }
     
     // 检查游戏结束条件
@@ -324,7 +389,37 @@ class Game {
         this.forcedEnding = null;
         this.hadLowSanity = false;
         this.isGameOver = false;
+        this.isInternship = false;
         this.candidates = [];
+    }
+    
+    // v1.3 开始实习
+    startInternship(company, geography) {
+        this.isInternship = true;
+        this.internshipCompany = company;
+        this.character.commuteType = geography;
+        
+        // 处理地理位置
+        const geoConfig = CONFIG.GEOGRAPHY[geography];
+        if (geography === 'remote') {
+            // 异地必须租房
+            const rentCost = Array.isArray(geoConfig.rentCost) 
+                ? geoConfig.rentCost[0] + Math.random() * (geoConfig.rentCost[1] - geoConfig.rentCost[0])
+                : geoConfig.rentCost;
+            this.character.setRenting(true, Math.floor(rentCost));
+        }
+        
+        return geoConfig;
+    }
+    
+    // v1.3 选择租房（远距离通勤时可选）
+    chooseToRent() {
+        if (this.character.commuteType === 'far') {
+            const rentCost = CONFIG.GEOGRAPHY.far.rentOption;
+            this.character.setRenting(true, rentCost);
+            return rentCost;
+        }
+        return 0;
     }
 }
 

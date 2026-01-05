@@ -30,6 +30,7 @@ class UIController {
             energyText: document.getElementById('energy-text'),
             sanityBar: document.getElementById('sanity-bar'),
             sanityText: document.getElementById('sanity-text'),
+            moneyText: document.getElementById('money-text'),
             
             // 属性
             statGpa: document.getElementById('stat-gpa'),
@@ -220,6 +221,17 @@ class UIController {
         } else {
             this.elements.sanityBar.style.background = 'linear-gradient(90deg, var(--sanity-color), #ec4899)';
         }
+        
+        // v1.3 金钱显示
+        if (this.elements.moneyText) {
+            this.elements.moneyText.textContent = `${character.money.toLocaleString()}元`;
+            // 省吃俭用或负债警告
+            if (character.money < 0) {
+                this.elements.moneyText.classList.add('money-warning');
+            } else {
+                this.elements.moneyText.classList.remove('money-warning');
+            }
+        }
     }
     
     // 更新属性显示
@@ -260,9 +272,22 @@ class UIController {
             const btn = document.createElement('button');
             btn.className = 'action-btn';
             btn.disabled = !action.available;
+            
+            // v1.3 显示金钱消耗
+            let costText = '';
+            if (action.energyCost > 0) {
+                costText += `⚡${action.energyCost}`;
+            }
+            if (action.moneyCost > 0) {
+                costText += costText ? ` 💰${action.moneyCost}` : `💰${action.moneyCost}`;
+            }
+            if (!costText) {
+                costText = '免费';
+            }
+            
             btn.innerHTML = `
                 <span class="action-name">${action.name}</span>
-                <span class="action-cost">⚡ ${action.energyCost} ${action.reason ? `| ${action.reason}` : ''}</span>
+                <span class="action-cost">${costText} ${action.reason ? `| ${action.reason}` : ''}</span>
             `;
             
             if (action.available) {

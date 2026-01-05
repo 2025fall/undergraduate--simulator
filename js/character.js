@@ -27,6 +27,17 @@ class Character {
         // Buff效果
         this.sanityRecoveryBonus = CONFIG.FAMILIES[this.familyType]?.sanityRecoveryBonus || 0;
         
+        // v1.3 经济系统
+        this.money = CONFIG.FAMILIES[this.familyType]?.initialMoney || 5000;
+        this.monthlyAllowance = CONFIG.FAMILIES[this.familyType]?.monthlyAllowance || 2000;
+        this.isOnBudget = false;  // 省吃俭用模式
+        this.rentCost = 0;  // 当前租房费用
+        this.isRenting = false;  // 是否在租房
+        
+        // v1.3 实习状态
+        this.currentInternship = null;  // 当前实习信息
+        this.commuteType = null;  // 通勤类型: near/far/remote
+        
         // 应用家庭背景初始加成
         if (CONFIG.FAMILIES[this.familyType]?.softskillBonus) {
             this.softskill += CONFIG.FAMILIES[this.familyType].softskillBonus;
@@ -108,7 +119,75 @@ class Character {
             case 'energy':
                 this.energy = Math.max(0, Math.min(this.maxEnergy, this.energy + amount));
                 return this.energy;
+            case 'money':
+                return this.modifyMoney(amount);
         }
+    }
+    
+    // v1.3 修改金钱
+    modifyMoney(amount) {
+        this.money += amount;
+        // 检查是否需要进入省吃俭用模式
+        if (this.money < 0) {
+            this.isOnBudget = true;
+        }
+        return this.money;
+    }
+    
+    // v1.3 设置租房状态
+    setRenting(isRenting, rentCost = 0) {
+        this.isRenting = isRenting;
+        this.rentCost = rentCost;
+    }
+    
+    // v1.3 设置通勤类型
+    setCommuteType(type) {
+        this.commuteType = type;
+    }
+    
+    // v1.3 获取每月总开销
+    getMonthlyExpense() {
+        let expense = CONFIG.MONTHLY_EXPENSE;  // 基础生活开销
+        if (this.isRenting) {
+            expense += this.rentCost;
+        }
+        if (this.isOnBudget) {
+            expense = Math.floor(expense * 0.5);  // 省吃俭用减半
+        }
+        return expense;
+    }
+    
+    // v1.3 处理每月经济结算
+    processMonthlyFinance() {
+        const results = [];
+        
+        // 收入：生活费
+        this.money += this.monthlyAllowance;
+        results.push(`收到生活费 +${this.monthlyAllowance}元`);
+        
+        // 支出：生活开销
+        const expense = this.getMonthlyExpense();
+        this.money -= expense;
+        results.push(`生活开销 -${expense}元`);
+        
+        // 检查破产
+        if (this.money < -5000) {
+            results.push('⚠️ 严重缺钱，触发向家里要钱事件');
+            return { results, triggerBorrowEvent: true };
+        }
+        
+        // 省吃俭用的心态惩罚
+        if (this.isOnBudget) {
+            this.modifySanity(-10);
+            results.push('省吃俭用中，心态 -10');
+        }
+        
+        return { results, triggerBorrowEvent: false };
+    }
+    
+    // v1.3 检查是否破产
+    isBankrupt() {
+        return this.money < -5000;
     }
     
     // 添加简历亮点
@@ -147,6 +226,8 @@ class Character {
             energy: this.energy,
             maxEnergy: this.maxEnergy,
             sanity: this.sanity,
+            money: this.money,
+            isOnBudget: this.isOnBudget,
             resumeItems: this.resumeItems
         };
     }

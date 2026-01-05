@@ -57,6 +57,7 @@ class GameController {
         this.ui.addLog(`🎓 欢迎来到大学！你是一名${school.displayName}的新生`, 'success');
         this.ui.addLog(`👨‍👩‍👧 家庭背景：${character.familyType} - ${family.buff}`, 'info');
         this.ui.addLog(`📊 初始属性：GPA ${character.gpa.toFixed(2)} | 项目 ${character.project} | 八股 ${character.knowledge} | 软技能 ${character.softskill}`, 'info');
+        this.ui.addLog(`💰 初始资金：${character.money.toLocaleString()}元 | 每月生活费：${character.monthlyAllowance}元`, 'info');
         this.ui.addLog('💪 开始你的大学生涯吧！', 'info');
     }
     
@@ -113,6 +114,28 @@ class GameController {
             case 'internship':
                 this.goInternship(special);
                 break;
+            case 'skipMonth':
+                // v1.3 豪华旅游等跳过月份的行动
+                this.skipMonth(special.months);
+                break;
+        }
+    }
+    
+    // v1.3 跳过月份（豪华旅游等）
+    skipMonth(months) {
+        this.ui.addLog(`🏖️ 享受假期中...`, 'info');
+        
+        const result = this.game.skipMonths(months, false);
+        
+        this.ui.addLog(`✅ 假期结束，精神焕发！`, 'success');
+        
+        // 更新UI
+        this.ui.updateAll(this.game);
+        this.renderActions();
+        
+        // 检查游戏是否结束
+        if (result.endCheck) {
+            this.handleGameEnd(result.endCheck);
         }
     }
     
@@ -169,10 +192,23 @@ class GameController {
             
             if (interviewResult.success) {
                 this.ui.addLog(`🎉 获得 ${interviewResult.company.name} 的Offer！`, 'success');
+                
+                // v1.3 显示岗位和地理信息
+                const jobConfig = CONFIG.JOB_TYPES[interviewResult.jobType];
+                const geoConfig = CONFIG.GEOGRAPHY[interviewResult.geography];
+                
                 if (interviewResult.type === 'internship') {
-                    this.ui.addLog(`💼 可以去实习了！日薪 ${interviewResult.salary}元`, 'info');
+                    this.ui.addLog(`💼 岗位：${jobConfig?.name || '研发'} | 日薪 ${interviewResult.salary}元`, 'info');
+                    this.ui.addLog(`📍 ${geoConfig.icon} ${geoConfig.name} - ${geoConfig.description}`, 'info');
+                    
+                    // v1.3 提示地理影响
+                    if (interviewResult.geography === 'far') {
+                        this.ui.addLog(`⚠️ 远距离通勤会扣心态，可选择租房(${CONFIG.GEOGRAPHY.far.rentOption}元/月)`, 'warning');
+                    } else if (interviewResult.geography === 'remote') {
+                        this.ui.addLog(`⚠️ 异地实习需要租房，每月额外开销2000-4000元`, 'warning');
+                    }
                 } else {
-                    this.ui.addLog(`💰 年薪 ${interviewResult.salary}w`, 'info');
+                    this.ui.addLog(`💰 岗位：${jobConfig?.name || '研发'} | 年薪 ${interviewResult.salary}w`, 'info');
                 }
             } else {
                 this.ui.addLog(`😢 ${interviewResult.company.name} 面试未通过`, 'danger');
@@ -190,9 +226,26 @@ class GameController {
     
     // 去实习
     goInternship(special) {
-        this.ui.addLog(`🏢 开始在 ${special.company.name} 实习...`, 'info');
+        const company = special.company;
         
-        const endResult = this.game.skipMonths(special.skipMonths);
+        // v1.3 设置实习状态（包括地理信息）
+        const geography = company.geography || 'near';
+        const geoConfig = this.game.startInternship(company, geography);
+        
+        this.ui.addLog(`🏢 开始在 ${company.name} 实习...`, 'info');
+        this.ui.addLog(`📍 ${geoConfig.icon} ${geoConfig.name}`, 'info');
+        
+        // v1.3 如果是异地，显示租房费用
+        if (geography === 'remote') {
+            this.ui.addLog(`🏠 已租房，每月租金 ${this.game.character.rentCost}元`, 'warning');
+        }
+        
+        const result = this.game.skipMonths(special.skipMonths, true);
+        
+        // 显示实习期间的结算
+        result.results.forEach(r => {
+            this.ui.addLog(`   ${r}`, 'info');
+        });
         
         this.ui.addLog(`✅ 实习结束！获得了宝贵的工作经验`, 'success');
         
@@ -201,8 +254,8 @@ class GameController {
         this.renderActions();
         
         // 检查游戏是否结束
-        if (endResult) {
-            this.handleGameEnd(endResult);
+        if (result.endCheck) {
+            this.handleGameEnd(result.endCheck);
         }
     }
     
@@ -211,6 +264,15 @@ class GameController {
         const result = this.game.endMonth();
         
         this.ui.addLog(`📅 第${this.game.currentMonth}月开始`, 'info');
+        
+        // v1.3 显示经济结算信息
+        result.results.forEach(r => {
+            if (r.includes('生活费') || r.includes('开销') || r.includes('工资')) {
+                this.ui.addLog(`💰 ${r}`, 'info');
+            } else if (r.includes('心态')) {
+                this.ui.addLog(`🧠 ${r}`, 'warning');
+            }
+        });
         
         // 检查新成就
         if (result.newAchievements && result.newAchievements.length > 0) {

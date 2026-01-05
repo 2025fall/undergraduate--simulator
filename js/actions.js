@@ -11,7 +11,9 @@ class ActionSystem {
         
         for (const [id, action] of Object.entries(ACTIONS)) {
             const available = action.available(this.game);
-            const canAfford = this.game.character.energy >= action.energyCost;
+            const canAffordEnergy = this.game.character.energy >= action.energyCost;
+            // v1.3 金钱检查
+            const canAffordMoney = !action.moneyCost || this.game.character.money >= action.moneyCost;
             const sanityOK = !action.sanityDrain || this.game.character.canDoHardAction();
             
             // 特殊条件检查
@@ -22,8 +24,8 @@ class ActionSystem {
             
             actions.push({
                 ...action,
-                available: available && canAfford && sanityOK && specialCondition,
-                reason: this.getUnavailableReason(action, available, canAfford, sanityOK, specialCondition)
+                available: available && canAffordEnergy && canAffordMoney && sanityOK && specialCondition,
+                reason: this.getUnavailableReason(action, available, canAffordEnergy, canAffordMoney, sanityOK, specialCondition)
             });
         }
         
@@ -31,7 +33,7 @@ class ActionSystem {
     }
     
     // 获取不可用原因
-    getUnavailableReason(action, available, canAfford, sanityOK, specialCondition) {
+    getUnavailableReason(action, available, canAffordEnergy, canAffordMoney, sanityOK, specialCondition) {
         if (!available) {
             if (action.id === 'applyInternship' || action.id === 'goInternship') {
                 return '大三才能解锁';
@@ -39,10 +41,16 @@ class ActionSystem {
             if (action.id === 'applyJob' || action.id === 'prepareGraduate') {
                 return '大四才能解锁';
             }
+            if (action.id === 'entertainment' || action.id === 'luxuryTrip') {
+                return '金钱不足';
+            }
             return '条件不满足';
         }
-        if (!canAfford) {
+        if (!canAffordEnergy) {
             return '精力不足';
+        }
+        if (!canAffordMoney) {
+            return '金钱不足';
         }
         if (!sanityOK) {
             return '心态过低';
@@ -79,6 +87,18 @@ class ActionSystem {
         if (action.energyCost > 0) {
             this.game.character.consumeEnergy(action.energyCost);
             results.push(`消耗精力 ${action.energyCost}`);
+        }
+        
+        // v1.3 消耗金钱
+        if (action.moneyCost > 0) {
+            this.game.character.modifyMoney(-action.moneyCost);
+            results.push(`消耗金钱 ${action.moneyCost}元`);
+        }
+        
+        // v1.3 恢复精力（休息类行动）
+        if (action.restoreEnergy) {
+            this.game.character.restoreEnergy();
+            results.push(`精力已恢复`);
         }
         
         // 应用心态消耗
@@ -137,6 +157,14 @@ class ActionSystem {
             const preparePoints = 15 + Math.floor(Math.random() * 10);
             this.game.graduateSystem.addPrepareScore(preparePoints);
             results.push(`📚 考研备考 +${preparePoints}`);
+        }
+        
+        // v1.3 豪华旅游跳过一个月
+        if (action.skipMonth) {
+            specialResult = {
+                type: 'skipMonth',
+                months: 1
+            };
         }
         
         // 增加行动计数

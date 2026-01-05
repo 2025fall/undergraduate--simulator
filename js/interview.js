@@ -83,7 +83,35 @@ class InterviewSystem {
         
         targetIndex = Math.min(targetIndex, sortedCompanies.length - 1);
         
-        return sortedCompanies[targetIndex];
+        const company = sortedCompanies[targetIndex];
+        
+        // v1.3 随机选择岗位类型
+        const jobTypes = company.jobTypes || ['backend', 'frontend'];
+        const jobType = jobTypes[Math.floor(Math.random() * jobTypes.length)];
+        
+        // v1.3 随机生成地理标签
+        const geography = this.generateGeography();
+        
+        return {
+            ...company,
+            jobType,
+            geography
+        };
+    }
+    
+    // v1.3 生成地理标签
+    generateGeography() {
+        const rand = Math.random();
+        let cumProb = 0;
+        
+        for (const [key, config] of Object.entries(CONFIG.GEOGRAPHY)) {
+            cumProb += config.probability;
+            if (rand < cumProb) {
+                return key;
+            }
+        }
+        
+        return 'near';
     }
     
     // 生成面试轮次
@@ -247,18 +275,20 @@ class InterviewSystem {
         const company = this.currentInterview.company;
         
         if (allPassed && this.roundResults.length === this.currentInterview.rounds.length) {
-            // 计算薪资（基于属性和运气）
-            const salaryRange = company.salaryRange;
-            const statBonus = (this.game.character.softskill / 500);  // 软技能影响薪资谈判
-            const salary = salaryRange[0] + (salaryRange[1] - salaryRange[0]) * (0.3 + Math.random() * 0.4 + statBonus * 0.3);
+            // v1.3 新薪资计算公式
+            const salary = this.calculateSalary(company);
             
             return {
                 success: true,
                 company: company,
-                salary: Math.round(salary),
+                salary: salary.finalSalary,
+                dailySalary: salary.dailySalary,  // v1.3 日薪（实习用）
                 type: this.currentInterview.type,
                 projectBonus: company.projectBonus,
-                resumeValue: company.resumeValue
+                resumeValue: company.resumeValue,
+                jobType: company.jobType,
+                geography: company.geography,
+                canNegotiate: salary.canNegotiate
             };
         }
         
@@ -295,6 +325,55 @@ class InterviewSystem {
             roundName: this.getCurrentRound()?.name,
             passedRounds: this.roundResults.filter(r => r).length
         };
+    }
+    
+    // v1.3 计算薪资
+    calculateSalary(company) {
+        const salaryRange = company.salaryRange;
+        const isInternship = this.currentInterview.type === 'internship';
+        
+        // 基础薪资（区间内随机）
+        let baseSalary = salaryRange[0] + Math.random() * (salaryRange[1] - salaryRange[0]);
+        
+        // 岗位修正
+        const jobType = company.jobType || 'backend';
+        const jobConfig = CONFIG.JOB_TYPES[jobType];
+        if (jobConfig) {
+            baseSalary *= jobConfig.salaryModifier;
+        }
+        
+        // 软技能谈判加成
+        const softskill = this.game.character.softskill;
+        let canNegotiate = softskill >= 80;
+        let negotiationBonus = 0;
+        
+        if (canNegotiate) {
+            // 谈判成功率基于软技能
+            const negotiateSuccess = Math.random() < (softskill / 200);
+            if (negotiateSuccess) {
+                negotiationBonus = 0.1 + Math.random() * 0.1;  // 10%-20%加成
+            }
+        }
+        
+        const finalSalary = baseSalary * (1 + negotiationBonus);
+        
+        if (isInternship) {
+            // 实习返回日薪
+            return {
+                dailySalary: Math.round(finalSalary),
+                finalSalary: Math.round(finalSalary),  // 日薪
+                canNegotiate,
+                negotiationBonus: Math.round(negotiationBonus * 100)
+            };
+        } else {
+            // 正式工作返回年薪（万）
+            return {
+                dailySalary: 0,
+                finalSalary: Math.round(finalSalary),  // 年薪(万)
+                canNegotiate,
+                negotiationBonus: Math.round(negotiationBonus * 100)
+            };
+        }
     }
 }
 
