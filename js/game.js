@@ -3,7 +3,7 @@
 class Game {
     constructor() {
         this.character = null;
-        this.currentMonth = 1;
+        this.currentQuarter = 1;  // v1.4 改为季度
         this.totalActions = 0;
         
         // 系统
@@ -21,7 +21,12 @@ class Game {
         this.hadLowSanity = false;  // 曾经低心态（用于成就）
         this.isGameOver = false;
         this.isInternship = false;  // v1.3 是否正在实习
-        this.hadEntertainmentThisMonth = false;  // v1.3 本月是否有娱乐消费
+        this.hadEntertainmentThisQuarter = false;  // v1.4 本季度是否有娱乐消费
+        
+        // v1.4 新增状态变量
+        this.mentalBreakdownCount = 0;  // 精神崩溃次数
+        this.civilServiceCount = 0;     // 公考准备次数
+        this.hasT1FreePass = false;     // 是否有T1免笔试券
         
         // 候选角色
         this.candidates = [];
@@ -45,7 +50,7 @@ class Game {
         this.achievementSystem = new AchievementSystem(this);
         
         // 重置游戏状态
-        this.currentMonth = 1;
+        this.currentQuarter = 1;  // v1.4 改为季度
         this.totalActions = 0;
         this.hasInternshipOffer = false;
         this.internshipCompany = null;
@@ -53,6 +58,9 @@ class Game {
         this.forcedEnding = null;
         this.hadLowSanity = false;
         this.isGameOver = false;
+        this.mentalBreakdownCount = 0;  // v1.4
+        this.civilServiceCount = 0;     // v1.4
+        this.hasT1FreePass = false;     // v1.4
         
         return this.character;
     }
@@ -77,31 +85,79 @@ class Game {
         return result;
     }
     
-    // 结束当月
-    endMonth() {
+    // v1.4 奖学金检查方法
+    checkScholarship() {
+        const checkQuarters = CONFIG.SCHOLARSHIP.checkQuarters;
+        if (checkQuarters.includes(this.currentQuarter)) {
+            // 计算年度GPA（过去4个季度的表现）
+            if (this.character.gpa >= CONFIG.SCHOLARSHIP.gpaThreshold) {
+                this.character.modifyMoney(CONFIG.SCHOLARSHIP.amount);
+                return { awarded: true, amount: CONFIG.SCHOLARSHIP.amount };
+            }
+        }
+        return { awarded: false };
+    }
+    
+    // v1.4 智商奇遇检查方法
+    checkIQEvents() {
+        const events = [];
+        // 竞赛奇遇（大二）
+        if (CONFIG.IQ_EVENTS.competition.triggerQuarters.includes(this.currentQuarter)) {
+            if (this.character.iq >= CONFIG.IQ_EVENTS.competition.iqThreshold && Math.random() < 0.3) {
+                events.push({ type: 'competition', ...CONFIG.IQ_EVENTS.competition });
+            }
+        }
+        return events;
+    }
+    
+    // v1.4 结束当季度（原endMonth）
+    endQuarter() {
         const results = [];
         
         // 恢复精力
         this.character.restoreEnergy();
         results.push('精力已恢复');
         
-        // v1.3 心态自然衰减（按阶段）
-        const phase = this.getCurrentPhase();
-        const sanityDecay = CONFIG.SANITY_DECAY[phase] || 2;
+        // v1.4 心态统一衰减30/季度
+        const sanityDecay = 30;
         this.character.modifySanity(-sanityDecay);
         results.push(`心态自然衰减 -${sanityDecay}`);
         
-        // v1.3 枯燥惩罚（当月无娱乐消费）
-        if (!this.hadEntertainmentThisMonth) {
+        // v1.4 枯燥惩罚（当季度无娱乐消费）
+        if (!this.hadEntertainmentThisQuarter) {
             const boredomPenalty = CONFIG.BOREDOM_PENALTY || 10;
             this.character.modifySanity(-boredomPenalty);
             results.push(`枯燥惩罚（无娱乐）心态 -${boredomPenalty}`);
         }
-        this.hadEntertainmentThisMonth = false;
+        this.hadEntertainmentThisQuarter = false;
         
-        // v1.3 经济结算
-        const financeResult = this.character.processMonthlyFinance();
-        results.push(...financeResult.results);
+        // v1.4 基础消耗2400元/季度
+        const baseExpense = 2400;
+        this.character.modifyMoney(-baseExpense);
+        results.push(`基础生活消耗 -${baseExpense}元`);
+        
+        // v1.4 奖学金检查
+        const scholarshipResult = this.checkScholarship();
+        if (scholarshipResult.awarded) {
+            results.push(`🎓 获得奖学金 +${scholarshipResult.amount}元`);
+        }
+        
+        // v1.4 智商奇遇检查
+        const iqEvents = this.checkIQEvents();
+        if (iqEvents.length > 0) {
+            iqEvents.forEach(event => {
+                this.eventSystem.addEvent({
+                    id: `iq_event_${event.type}`,
+                    title: `🧠 ${event.type === 'competition' ? '竞赛机会' : '智商奇遇'}`,
+                    description: '你的高智商引起了注意，有一个特殊机会向你招手...',
+                    choices: [
+                        { text: '参加竞赛', effects: { knowledge: 20, sanity: -10 } },
+                        { text: '专注学业', effects: {} }
+                    ]
+                });
+                results.push(`💡 触发智商奇遇：${event.type}`);
+            });
+        }
         
         // v1.3 通勤惩罚（如果正在实习且远距离通勤）
         if (this.isInternship && this.character.commuteType === 'far' && !this.character.isRenting) {
@@ -110,7 +166,7 @@ class Game {
         }
         
         // 检查是否需要触发借钱事件
-        if (financeResult.triggerBorrowEvent) {
+        if (this.character.money < 0) {
             this.eventSystem.addEvent({
                 id: 'borrow_money',
                 title: '💸 向家里要钱',
@@ -133,7 +189,7 @@ class Game {
         this.eventSystem.checkRandomEvents();
         
         // 推进时间
-        this.currentMonth++;
+        this.currentQuarter++;
         
         // 检查游戏结束条件
         const endCheck = this.checkEndConditions();
@@ -152,48 +208,68 @@ class Game {
         };
     }
     
-    // 跳过多个月（实习）
-    skipMonths(months, isInternship = false) {
+    // v1.4 跳过季度（实习消耗1个季度）
+    skipQuarter(isInternship = false) {
         const results = [];
         
-        for (let i = 0; i < months; i++) {
-            this.currentMonth++;
-            this.character.restoreEnergy();
+        this.currentQuarter++;
+        this.character.restoreEnergy();
+        
+        if (isInternship && this.internshipCompany) {
+            // v1.4 实习期间的经济结算（1季度 = 3个月）
+            // 获取实习工资（日薪 * 22个工作日 * 3个月）
+            const dailySalary = this.internshipCompany.salary || 200;
+            const quarterlyIncome = dailySalary * 22 * 3;
+            this.character.modifyMoney(quarterlyIncome);
+            results.push(`实习工资 +${quarterlyIncome}元`);
             
-            if (isInternship && this.internshipCompany) {
-                // v1.3 实习期间的经济结算
-                // 获取实习工资（日薪 * 22个工作日）
-                const dailySalary = this.internshipCompany.salary || 200;
-                const monthlyIncome = dailySalary * 22;
-                this.character.modifyMoney(monthlyIncome);
-                results.push(`实习工资 +${monthlyIncome}元`);
-                
-                // 扣除生活开销
-                const expense = this.character.getMonthlyExpense();
-                this.character.modifyMoney(-expense);
-                
-                // v1.3 实习期间可能触发PUA事件
-                if (Math.random() < 0.2) {
-                    const puaDamage = 10 + Math.floor(Math.random() * 10);
-                    this.character.modifySanity(-puaDamage);
-                    results.push(`实习遭遇PUA 心态 -${puaDamage}`);
-                } else {
-                    // 正常实习心态变化
-                    this.character.modifySanity(3);
-                }
-                
-                // 通勤惩罚
-                if (this.character.commuteType === 'far' && !this.character.isRenting) {
-                    this.character.modifySanity(-CONFIG.GEOGRAPHY.far.sanityPenalty);
-                }
+            // 扣除生活开销（季度）
+            const expense = 2400;  // 基础消耗2400元/季度
+            this.character.modifyMoney(-expense);
+            results.push(`生活消耗 -${expense}元`);
+            
+            // v1.4 实习随机事件
+            const randomRoll = Math.random();
+            
+            // 20%概率遇到好导师
+            if (randomRoll < 0.2) {
+                this.character.modifySoftskill(10);
+                results.push(`🌟 遇到好导师 软技能 +10`);
+                // 好导师情况下心态少扣10
+                this.character.modifySanity(-20);  // 原本扣30，少扣10
+                results.push(`导师关照 心态 -20（少扣10）`);
+            }
+            // 10%概率裁员（仅T2/T3）
+            else if (randomRoll < 0.3 && this.internshipCompany.tier !== 'T1' && this.internshipCompany.tier !== 'T1.5') {
+                const currentMoney = this.character.money;
+                this.character.modifyMoney(-Math.floor(currentMoney / 2));
+                results.push(`💔 遭遇裁员！金钱减半`);
+                // GPA惩罚减半（原本可能扣0.2，现在扣0.1）
+                this.character.modifyGPA(-0.1);
+                results.push(`裁员打击 GPA -0.1`);
+                this.character.modifySanity(-40);
+                results.push(`裁员打击 心态 -40`);
+            }
+            // v1.3 实习期间可能触发PUA事件
+            else if (randomRoll < 0.5) {
+                const puaDamage = 10 + Math.floor(Math.random() * 10);
+                this.character.modifySanity(-puaDamage);
+                results.push(`实习遭遇PUA 心态 -${puaDamage}`);
             } else {
-                // 非实习的跳过（如豪华旅游）
-                this.character.modifySanity(3);
+                // 正常实习心态变化
+                this.character.modifySanity(-30);  // 季度心态衰减
+                results.push(`实习心态消耗 -30`);
             }
             
-            if (this.currentMonth >= CONFIG.TOTAL_MONTHS) {
-                break;
+            // 通勤惩罚
+            if (this.character.commuteType === 'far' && !this.character.isRenting) {
+                this.character.modifySanity(-CONFIG.GEOGRAPHY.far.sanityPenalty);
+                results.push(`通勤折磨 心态 -${CONFIG.GEOGRAPHY.far.sanityPenalty}`);
             }
+        } else {
+            // 非实习的跳过（如豪华旅游）
+            this.character.modifySanity(10);
+            results.push(`休闲恢复 心态 +10`);
         }
         
         // 清除实习状态
@@ -209,10 +285,19 @@ class Game {
     
     // 检查游戏结束条件
     checkEndConditions() {
-        // 心态归零
+        // 心态归零（精神崩溃）
         if (this.character.sanity <= 0) {
-            this.isGameOver = true;
-            return { type: 'mental_breakdown' };
+            this.mentalBreakdownCount++;  // v1.4 记录崩溃次数
+            
+            // v1.4 过劳死结局（崩溃次数>=2）
+            if (this.mentalBreakdownCount >= 2) {
+                this.isGameOver = true;
+                return { type: 'overwork_death' };
+            }
+            
+            // 首次崩溃，恢复一些心态继续
+            this.character.sanity = 20;
+            return { type: 'mental_breakdown_warning', count: this.mentalBreakdownCount };
         }
         
         // GPA过低
@@ -222,7 +307,7 @@ class Game {
         }
         
         // 时间结束
-        if (this.currentMonth > CONFIG.TOTAL_MONTHS) {
+        if (this.currentQuarter > CONFIG.TOTAL_QUARTERS) {
             this.isGameOver = true;
             return { type: 'graduation' };
         }
@@ -293,6 +378,11 @@ class Game {
             return ENDINGS[this.forcedEnding];
         }
         
+        // v1.4 过劳死结局（崩溃次数>=2）
+        if (this.mentalBreakdownCount >= 2) {
+            return ENDINGS['overwork_death'];
+        }
+        
         // 心态崩溃
         if (this.character.sanity <= 0) {
             return ENDINGS['mental_breakdown'];
@@ -301,6 +391,21 @@ class Game {
         // GPA过低
         if (this.character.gpa < 2.0) {
             return ENDINGS['dropout'];
+        }
+        
+        // v1.4 KOL结局判定（软技能>=80且有一定粉丝基础）
+        if (this.character.softskill >= 80 && this.character.socialMedia && this.character.socialMedia >= 10000) {
+            return ENDINGS['kol'];
+        }
+        
+        // v1.4 公务员结局判定（公考准备次数>=3）
+        if (this.civilServiceCount >= 3) {
+            // 根据知识水平判定是否上岸
+            if (this.character.knowledge >= 60) {
+                return ENDINGS['civil_service_success'];
+            } else {
+                return ENDINGS['civil_service_fail'];
+            }
         }
         
         // 检查是否选择了考研路线
@@ -341,6 +446,11 @@ class Game {
             }
         }
         
+        // v1.4 Gap Year结局（没有offer但有钱且心态还行）
+        if (this.character.money >= 10000 && this.character.sanity >= 50) {
+            return ENDINGS['gap_year'];
+        }
+        
         // 没有offer
         return ENDINGS['graduate_unemployed'];
     }
@@ -366,31 +476,34 @@ class Game {
     
     // 获取当前阶段
     getCurrentPhase() {
-        if (this.currentMonth <= 24) {
+        if (this.currentQuarter <= 8) {  // v1.4 大一大二（8个季度）
             return 'ACCUMULATE';
-        } else if (this.currentMonth <= 36) {
+        } else if (this.currentQuarter <= 12) {  // v1.4 大三（4个季度）
             return 'INTERNSHIP';
         } else {
-            return 'DECISION';
+            return 'DECISION';  // v1.4 大四
         }
     }
     
     // 获取游戏状态摘要
     getGameState() {
         return {
-            month: this.currentMonth,
+            quarter: this.currentQuarter,  // v1.4 改为季度
             phase: this.getCurrentPhase(),
             character: this.character.getSummary(),
             hasInternshipOffer: this.hasInternshipOffer,
             offersCount: this.offers.length,
-            isGameOver: this.isGameOver
+            isGameOver: this.isGameOver,
+            mentalBreakdownCount: this.mentalBreakdownCount,  // v1.4
+            civilServiceCount: this.civilServiceCount,        // v1.4
+            hasT1FreePass: this.hasT1FreePass                 // v1.4
         };
     }
     
     // 重置游戏
     reset() {
         this.character = null;
-        this.currentMonth = 1;
+        this.currentQuarter = 1;  // v1.4 改为季度
         this.totalActions = 0;
         this.hasInternshipOffer = false;
         this.internshipCompany = null;
@@ -399,6 +512,10 @@ class Game {
         this.hadLowSanity = false;
         this.isGameOver = false;
         this.isInternship = false;
+        this.hadEntertainmentThisQuarter = false;  // v1.4
+        this.mentalBreakdownCount = 0;  // v1.4
+        this.civilServiceCount = 0;     // v1.4
+        this.hasT1FreePass = false;     // v1.4
         this.candidates = [];
     }
     

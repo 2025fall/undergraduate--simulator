@@ -1,24 +1,42 @@
 // 游戏配置数据
 
 const CONFIG = {
-    // 游戏基础设置
-    TOTAL_MONTHS: 48,
+    // 游戏基础设置 v1.4 季度制
+    TOTAL_QUARTERS: 16,
     INITIAL_ENERGY: 100,
     INITIAL_SANITY: 80,
     MAX_SANITY: 100,
     LOW_SANITY_THRESHOLD: 20,
     
-    // v1.3 心态自然衰减（按阶段）
-    SANITY_DECAY: {
-        ACCUMULATE: 2,   // 大一大二：-2/月
-        INTERNSHIP: 5,   // 大三：-5/月
-        DECISION: 5      // 大四：-5/月
+    // v1.4 心态自然衰减（统一30/季度）
+    SANITY_DECAY: 30,
+    
+    // v1.4 基础生活开销（每季度）
+    QUARTERLY_EXPENSE: 2400,
+    // v1.4 枯燥惩罚（当季度无娱乐消费）
+    BOREDOM_PENALTY: 20,
+    
+    // v1.4 奖学金配置
+    SCHOLARSHIP: {
+        checkQuarters: [4, 8, 12],  // Q4/Q8/Q12检查
+        gpaThreshold: 3.8,
+        amount: 8000
     },
     
-    // v1.3 基础生活开销（每月）
-    MONTHLY_EXPENSE: 800,
-    // v1.3 枯燥惩罚（当月无娱乐消费）
-    BOREDOM_PENALTY: 10,
+    // v1.4 智商奇遇配置
+    IQ_EVENTS: {
+        competition: {
+            triggerQuarters: [5, 6, 7, 8],  // 大二
+            iqThreshold: 80,
+            projectBonus: 100,
+            name: 'ACM/数学建模获奖'
+        },
+        mentorReferral: {
+            triggerChance: 0.05,  // 包装项目时5%概率
+            iqThreshold: 85,
+            reward: 'T1免笔试面试券'
+        }
+    },
     
     // v1.3 地理标签配置（数值调整）
     GEOGRAPHY: {
@@ -63,11 +81,11 @@ const CONFIG = {
         'product': { name: '产品', salaryModifier: 0.95 }
     },
     
-    // 阶段划分
+    // v1.4 阶段划分（季度制）
     PHASES: {
-        ACCUMULATE: { start: 1, end: 24, name: '积累期', icon: '📚' },
-        INTERNSHIP: { start: 25, end: 36, name: '实习期', icon: '💼' },
-        DECISION: { start: 37, end: 48, name: '抉择期', icon: '🎯' }
+        ACCUMULATE: { start: 1, end: 8, name: '大一大二', icon: '📚' },
+        INTERNSHIP: { start: 9, end: 12, name: '大三', icon: '💼' },
+        DECISION: { start: 13, end: 16, name: '大四', icon: '🎯' }
     },
     
     // 学校背景配置
@@ -200,22 +218,47 @@ const CONFIG = {
     }
 };
 
-// 行动配置
+// v1.4 行动配置（季度制）
 const ACTIONS = {
     // 基础行动（全阶段可用）
-    // v1.3 认真上课是唯一正向GPA来源
+    // v1.4 认真上课
     study: {
         id: 'study',
         name: '📖 认真上课',
-        description: '认真听课完成作业，唯一的GPA来源',
-        energyCost: 20,
+        description: '认真听课完成作业，GPA+0.2，心态-10',
+        energyCost: 40,
         effects: {
-            gpa: { base: 0.1, variance: 0.02 },  // GPA +0.1
-            knowledge: { base: 3, variance: 2 }
+            gpa: { base: 0.2, variance: 0.02 },
+            sanity: { base: -10, variance: 2 }
         },
         available: () => true
     },
-    // v1.3 包装项目有GPA惩罚
+    // v1.4 新增操场跑步
+    running: {
+        id: 'running',
+        name: '🏃 操场跑步',
+        description: '锻炼身体，心态+20',
+        energyCost: 30,
+        moneyCost: 0,
+        effects: {
+            sanity: { base: 20, variance: 3 }
+        },
+        available: () => true
+    },
+    // v1.4 新增社团活动
+    clubActivity: {
+        id: 'clubActivity',
+        name: '🎭 社团活动',
+        description: '参加社团活动，心态+30，软技能+5（100元）',
+        energyCost: 40,
+        moneyCost: 100,
+        effects: {
+            sanity: { base: 30, variance: 5 },
+            softskill: { base: 5, variance: 2 }
+        },
+        available: (game) => game.character.money >= 100
+    },
+    // v1.4 包装项目
     coding: {
         id: 'coding',
         name: '💻 包装项目',
@@ -223,7 +266,7 @@ const ACTIONS = {
         energyCost: 30,
         effects: {
             project: { base: 8, variance: 4 },
-            gpa: { base: -0.2, variance: 0 }  // GPA -0.2 惩罚
+            gpa: { base: -0.2, variance: 0 }
         },
         available: () => true
     },
@@ -234,7 +277,7 @@ const ACTIONS = {
         energyCost: 20,
         effects: {
             knowledge: { base: 8, variance: 3 },
-            sanity: { base: -5, variance: 2 }  // 枯燥扣心态
+            sanity: { base: -5, variance: 2 }
         },
         available: () => true
     },
@@ -249,63 +292,60 @@ const ACTIONS = {
         },
         available: () => true
     },
-    // v1.3 新增兼职打工
-    partTimeJob: {
-        id: 'partTimeJob',
-        name: '💪 兼职打工',
-        description: '赚钱但牺牲学业和心态',
-        energyCost: 30,
+    // v1.4 疯狂打工（替代原兼职打工）
+    hardWork: {
+        id: 'hardWork',
+        name: '💪 疯狂打工',
+        description: '拼命赚钱，金钱+2000，GPA-0.4，心态-30',
+        energyCost: 50,
         effects: {
-            gpa: { base: -0.2, variance: 0 },   // GPA -0.2
-            sanity: { base: -10, variance: 3 }  // 心态 -10
+            gpa: { base: -0.4, variance: 0 },
+            sanity: { base: -30, variance: 5 }
         },
-        moneyGain: 500,  // 赚500元
+        moneyGain: 2000,
         available: () => true
     },
-    // v1.3 结算行动：宿舍死宅
-    sleep: {
-        id: 'sleep',
-        name: '😴 【结算】宿舍死宅',
-        description: '进入下月，精力回满，心态+5',
+    // v1.4 新增公考
+    civilService: {
+        id: 'civilService',
+        name: '📋 公考备考',
+        description: '备考公务员考试，公考率+15%，心态-15（Q13解锁）',
+        energyCost: 40,
+        effects: {
+            civilServiceRate: { base: 15, variance: 0 },
+            sanity: { base: -15, variance: 3 }
+        },
+        available: (game) => game.currentQuarter >= 13
+    },
+    // v1.4 结算行动：宿舍摆烂
+    sleepSettle: {
+        id: 'sleepSettle',
+        name: '😴 【结算】宿舍摆烂',
+        description: '进入下季度，精力回满，心态+10',
         energyCost: 0,
         moneyCost: 0,
         effects: {
-            sanity: { base: 5, variance: 2 }
+            sanity: { base: 10, variance: 2 }
         },
         restoreEnergy: true,
-        endMonth: true,
-        isEntertainment: false,  // 不算娱乐消费
+        endQuarter: true,
+        isEntertainment: false,
         available: () => true
     },
-    // v1.3 结算行动：聚餐娱乐（费用下调到200）
-    entertainment: {
-        id: 'entertainment',
-        name: '🎮 【结算】聚餐娱乐',
-        description: '进入下月，精力回满，心态+30（200元）',
+    // v1.4 结算行动：特种兵旅游
+    backpackTrip: {
+        id: 'backpackTrip',
+        name: '🎒 【结算】特种兵旅游',
+        description: '进入下季度，精力回满，心态+60（1000元）',
         energyCost: 0,
-        moneyCost: 200,
+        moneyCost: 1000,
         effects: {
-            sanity: { base: 30, variance: 5 }
+            sanity: { base: 60, variance: 5 }
         },
         restoreEnergy: true,
-        endMonth: true,
-        isEntertainment: true,  // 算娱乐消费
-        available: (game) => game.character.money >= 200
-    },
-    // v1.3 结算行动：豪华旅游（费用调整到3000）
-    luxuryTrip: {
-        id: 'luxuryTrip',
-        name: '🏖️ 【结算】豪华旅游',
-        description: '进入下月，精力回满，心态+80（3000元）',
-        energyCost: 0,
-        moneyCost: 3000,
-        effects: {
-            sanity: { base: 80, variance: 0 }
-        },
-        restoreEnergy: true,
-        endMonth: true,
-        isEntertainment: true,  // 算娱乐消费
-        available: (game) => game.character.money >= 3000
+        endQuarter: true,
+        isEntertainment: true,
+        available: (game) => game.character.money >= 1000
     },
     project: {
         id: 'project',
@@ -315,14 +355,14 @@ const ACTIONS = {
         effects: {
             project: { base: 15, variance: 8 },
             softskill: { base: 3, variance: 2 },
-            gpa: { base: -0.1, variance: 0 }  // 轻微GPA惩罚
+            gpa: { base: -0.1, variance: 0 }
         },
         resumeChance: 0.2,
         resumeItems: ['🏆 项目/比赛经历', '📱 独立作品'],
         available: () => true
     },
     
-    // 实习期行动（大三解锁）
+    // 实习期行动（大三Q9解锁）
     applyInternship: {
         id: 'applyInternship',
         name: '📝 投递实习',
@@ -331,24 +371,24 @@ const ACTIONS = {
         effects: {},
         triggerInterview: true,
         interviewType: 'internship',
-        available: (game) => game.currentMonth >= 25
+        available: (game) => game.currentQuarter >= 9
     },
     goInternship: {
         id: 'goInternship',
         name: '🏢 去实习',
-        description: '加入公司实习（跳过3个月）',
+        description: '加入公司实习（跳过1季度）',
         energyCost: 0,
         effects: {
             project: { base: 40, variance: 20 },
             softskill: { base: 15, variance: 10 }
         },
-        skipMonths: 3,
+        skipQuarters: 1,
         requireOffer: 'internship',
         resumeItem: '💼 大厂实习经历',
-        available: (game) => game.currentMonth >= 25 && game.hasInternshipOffer
+        available: (game) => game.currentQuarter >= 9 && game.hasInternshipOffer
     },
     
-    // 抉择期行动（大四解锁）
+    // 抉择期行动（大四Q13解锁）
     applyJob: {
         id: 'applyJob',
         name: '💼 秋招投递',
@@ -357,7 +397,7 @@ const ACTIONS = {
         effects: {},
         triggerInterview: true,
         interviewType: 'fulltime',
-        available: (game) => game.currentMonth >= 37
+        available: (game) => game.currentQuarter >= 13
     },
     prepareGraduate: {
         id: 'prepareGraduate',
@@ -369,7 +409,7 @@ const ACTIONS = {
             gpa: { base: 0.01, variance: 0.005 }
         },
         sanityDrain: 5,
-        available: (game) => game.currentMonth >= 37
+        available: (game) => game.currentQuarter >= 13
     }
 };
 
@@ -845,7 +885,7 @@ const RANDOM_EVENTS = [
     }
 ];
 
-// 结局配置
+// v1.4 结局配置（新增多元化结局）
 const ENDINGS = {
     // 工作结局
     'offer_t1': {
@@ -879,6 +919,36 @@ const ENDINGS = {
         icon: '📖',
         description: '凭借优异的成绩获得保研资格，直升研究生。学霸的人生就是这么朴实无华。',
         requirement: '获得保研资格'
+    },
+    
+    // v1.4 新增多元化结局
+    'kol': {
+        title: '📱 网红KOL',
+        icon: '🌟',
+        description: '凭借出色的软技能和资金积累，你成为了一名成功的网红博主，粉丝百万！',
+        requirement: '软技能>800且金钱>50000',
+        condition: (game) => game.character.softskill > 800 && game.character.money > 50000
+    },
+    'civil_servant': {
+        title: '🏛️ 上岸公务员',
+        icon: '📋',
+        description: '经过多次努力，你终于成功考上公务员，捧起了铁饭碗。稳定就是幸福！',
+        requirement: '公考次数>=3且通过',
+        condition: (game) => game.civilServiceAttempts >= 3 && game.civilServicePassed
+    },
+    'gap_year': {
+        title: '🌍 Gap Year',
+        icon: '✈️',
+        description: '虽然没有offer也没考研，但你心态超好！决定给自己一年时间去看看世界，人生不只有工作。',
+        requirement: '无offer无考研但心态>90',
+        condition: (game) => !game.hasOffer && !game.postgraduateSuccess && game.character.sanity > 90
+    },
+    'overwork_death': {
+        title: '💀 过劳猝死',
+        icon: '☠️',
+        description: '过度的压力和连续的崩溃摧毁了你的身体。记住：没有什么比健康更重要。',
+        requirement: '崩溃次数>=2',
+        condition: (game) => game.breakdownCount >= 2
     },
     
     // 失败结局

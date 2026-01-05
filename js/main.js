@@ -20,9 +20,9 @@ class GameController {
             this.restartGame();
         });
         
-        // 结束本月按钮
+        // 结束本季按钮
         this.ui.elements.endMonthBtn.addEventListener('click', () => {
-            this.endMonth();
+            this.endQuarter();
         });
     }
     
@@ -114,22 +114,22 @@ class GameController {
             case 'internship':
                 this.goInternship(special);
                 break;
-            case 'endMonth':
-                // v1.3 结算行动触发结束月份
-                this.endMonthWithAction(special.isEntertainment);
+            case 'endQuarter':
+                // v1.3 结算行动触发结束季度
+                this.endQuarterWithAction(special.isEntertainment);
                 break;
         }
     }
     
-    // v1.3 结算行动结束月份
-    endMonthWithAction(isEntertainment) {
+    // v1.3 结算行动结束季度
+    endQuarterWithAction(isEntertainment) {
         // 标记娱乐消费
         if (isEntertainment) {
-            this.game.hadEntertainmentThisMonth = true;
+            this.game.hadEntertainmentThisQuarter = true;
         }
         
-        // 执行正常的结束月份流程
-        this.endMonth();
+        // 执行正常的结束季度流程
+        this.endQuarter();
     }
     
     // 开始面试
@@ -257,11 +257,11 @@ class GameController {
         }
     }
     
-    // 结束本月
-    endMonth() {
-        const result = this.game.endMonth();
+    // 结束本季
+    endQuarter() {
+        const result = this.game.endQuarter();
         
-        this.ui.addLog(`📅 第${this.game.currentMonth}月开始`, 'info');
+        this.ui.addLog(`📅 Q${this.game.currentQuarter} 开始`, 'info');
         
         // v1.3 显示经济结算信息
         result.results.forEach(r => {
@@ -271,6 +271,18 @@ class GameController {
                 this.ui.addLog(`🧠 ${r}`, 'warning');
             }
         });
+        
+        // v1.4 奖学金提示处理
+        if (result.scholarship?.awarded) {
+            this.ui.addLog(`🎉 获得国家奖学金 +${result.scholarship.amount}元！`, 'success');
+        }
+        
+        // v1.4 智商奇遇处理
+        if (result.iqEvents?.length > 0) {
+            result.iqEvents.forEach(e => {
+                this.ui.addLog(`✨ 智商奇遇：${e.name}！`, 'success');
+            });
+        }
         
         // 检查新成就
         if (result.newAchievements && result.newAchievements.length > 0) {

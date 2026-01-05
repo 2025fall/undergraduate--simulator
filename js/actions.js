@@ -109,7 +109,7 @@ class ActionSystem {
         
         // v1.3 标记娱乐消费
         if (action.isEntertainment) {
-            this.game.hadEntertainmentThisMonth = true;
+            this.game.hadEntertainmentThisQuarter = true;
         }
         
         // 应用心态消耗
@@ -170,10 +170,10 @@ class ActionSystem {
             results.push(`📚 考研备考 +${preparePoints}`);
         }
         
-        // v1.3 结算行动触发结束月份
-        if (action.endMonth) {
+        // v1.3 结算行动触发结束季度
+        if (action.endQuarter) {
             specialResult = {
-                type: 'endMonth',
+                type: 'endQuarter',
                 isEntertainment: action.isEntertainment || false
             };
         }

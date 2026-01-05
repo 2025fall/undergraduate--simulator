@@ -151,21 +151,23 @@ class UIController {
         });
     }
     
-    // 更新时间显示
-    updateTime(month) {
-        const year = Math.ceil(month / 12);
-        const monthInYear = ((month - 1) % 12) + 1;
+    // 更新时间显示（季度制）
+    updateTime(quarter) {
+        // Q1-Q4=大一，Q5-Q8=大二，Q9-Q12=大三，Q13-Q16=大四
+        const year = Math.ceil(quarter / 4);
+        const quarterInYear = ((quarter - 1) % 4) + 1;
         
         const yearNames = ['大一', '大二', '大三', '大四'];
         this.elements.currentYear.textContent = yearNames[year - 1] || '大四';
-        this.elements.currentMonth.textContent = `第${monthInYear}月`;
-        this.elements.monthCount.textContent = `(${month}/48)`;
+        this.elements.currentMonth.textContent = `Q${quarterInYear}`;
+        this.elements.monthCount.textContent = `(${quarter}/16)`;
         
-        // 更新阶段
+        // 更新阶段（季度制）
+        // Q1-8: 积累期, Q9-12: 实习期, Q13-16: 抉择期
         let phase;
-        if (month <= 24) {
+        if (quarter <= 8) {
             phase = CONFIG.PHASES.ACCUMULATE;
-        } else if (month <= 36) {
+        } else if (quarter <= 12) {
             phase = CONFIG.PHASES.INTERNSHIP;
         } else {
             phase = CONFIG.PHASES.DECISION;
@@ -174,15 +176,16 @@ class UIController {
         this.elements.phaseInfo.textContent = `${phase.icon} ${phase.name}`;
         
         // 更新阶段提示
-        this.updatePhaseTips(month);
+        this.updatePhaseTips(quarter);
     }
     
-    // 更新阶段提示
-    updatePhaseTips(month) {
+    // 更新阶段提示（季度制）
+    updatePhaseTips(quarter) {
         let tips;
-        if (month <= 24) {
+        // Q1-8: 积累期, Q9-12: 实习期, Q13-16: 抉择期
+        if (quarter <= 8) {
             tips = CONFIG.PHASE_TIPS.ACCUMULATE;
-        } else if (month <= 36) {
+        } else if (quarter <= 12) {
             tips = CONFIG.PHASE_TIPS.INTERNSHIP;
         } else {
             tips = CONFIG.PHASE_TIPS.DECISION;
@@ -467,7 +470,7 @@ class UIController {
     
     // 更新全部UI
     updateAll(game) {
-        this.updateTime(game.currentMonth);
+        this.updateTime(game.currentQuarter);
         this.updateCharacterInfo(game.character);
         this.updateResources(game.character);
         this.updateStats(game.character);
