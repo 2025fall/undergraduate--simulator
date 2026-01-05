@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本科生模拟器：四年之约</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 开始界面 -->
+        <div id="start-screen" class="screen active">
+            <div class="title-container">
+                <h1 class="game-title">🎓 本科生模拟器</h1>
+                <h2 class="game-subtitle">四年之约</h2>
+                <p class="game-desc">从大一萌新到秋招卷王，你能顶住内卷的压力吗？</p>
+            </div>
+            <button id="start-btn" class="btn btn-primary btn-large">开始游戏</button>
+            <div class="version-info">v1.1 | 黑色幽默文字模拟养成</div>
+        </div>
+
+        <!-- 角色选择界面 -->
+        <div id="character-select-screen" class="screen">
+            <h2>🎲 命运的骰子已经掷下...</h2>
+            <p class="hint">系统为你随机生成了5位候选人，请选择一位开始你的大学生涯</p>
+            <div id="character-cards" class="character-cards"></div>
+        </div>
+
+        <!-- 游戏主界面 -->
+        <div id="game-screen" class="screen">
+            <!-- 顶部状态栏 -->
+            <div class="status-bar">
+                <div class="time-info">
+                    <span id="current-year">大一</span>
+                    <span id="current-month">第1月</span>
+                    <span id="month-count">(1/48)</span>
+                </div>
+                <div class="phase-info" id="phase-info">📚 积累期</div>
+            </div>
+
+            <!-- 角色信息面板 -->
+            <div class="main-container">
+                <div class="left-panel">
+                    <div class="panel character-panel">
+                        <h3>👤 角色信息</h3>
+                        <div class="character-info">
+                            <div class="info-row">
+                                <span class="label">学校：</span>
+                                <span id="char-school" class="value"></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">家庭：</span>
+                                <span id="char-family" class="value"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 资源面板 -->
+                    <div class="panel resource-panel">
+                        <h3>💪 资源状态</h3>
+                        <div class="resource-item">
+                            <span class="resource-label">⚡ 精力</span>
+                            <div class="progress-bar">
+                                <div id="energy-bar" class="progress energy"></div>
+                            </div>
+                            <span id="energy-text" class="resource-value">100/100</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">🧠 心态</span>
+                            <div class="progress-bar">
+                                <div id="sanity-bar" class="progress sanity"></div>
+                            </div>
+                            <span id="sanity-text" class="resource-value">80/100</span>
+                        </div>
+                    </div>
+
+                    <!-- 属性面板 -->
+                    <div class="panel stats-panel">
+                        <h3>📊 四维属性</h3>
+                        <div class="stat-item">
+                            <span class="stat-label">📖 学业 (GPA)</span>
+                            <span id="stat-gpa" class="stat-value">3.50</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">💻 项目能力</span>
+                            <span id="stat-project" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">📚 八股分</span>
+                            <span id="stat-knowledge" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">🗣️ 软技能</span>
+                            <span id="stat-softskill" class="stat-value">0</span>
+                        </div>
+                    </div>
+
+                    <!-- 简历面板 -->
+                    <div class="panel resume-panel">
+                        <h3>📄 简历亮点</h3>
+                        <ul id="resume-list" class="resume-list">
+                            <li class="empty-hint">暂无亮点，快去积累吧！</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 中间行动区域 -->
+                <div class="center-panel">
+                    <div class="panel action-panel">
+                        <h3>🎯 本月行动</h3>
+                        <div id="action-buttons" class="action-buttons"></div>
+                        <button id="end-month-btn" class="btn btn-warning">结束本月 ➡️</button>
+                    </div>
+
+                    <!-- 日志面板 -->
+                    <div class="panel log-panel">
+                        <h3>📜 事件日志</h3>
+                        <div id="game-log" class="game-log"></div>
+                    </div>
+                </div>
+
+                <!-- 右侧信息面板 -->
+                <div class="right-panel">
+                    <div class="panel tips-panel">
+                        <h3>💡 阶段提示</h3>
+                        <div id="phase-tips" class="phase-tips"></div>
+                    </div>
+
+                    <div class="panel achievements-panel">
+                        <h3>🏆 成就</h3>
+                        <div id="achievements" class="achievements">
+                            <div class="empty-hint">暂无成就</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 事件弹窗 -->
+        <div id="event-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="event-title">📢 事件</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="event-description"></p>
+                    <div id="event-choices" class="event-choices"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 面试弹窗 -->
+        <div id="interview-modal" class="modal">
+            <div class="modal-content interview-content">
+                <div class="modal-header">
+                    <h3 id="interview-title">💼 面试</h3>
+                    <div class="interview-progress">
+                        <span id="interview-round">第1轮</span>
+                        <span id="interview-company"></span>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div id="interview-question" class="interview-question"></div>
+                    <div id="interview-options" class="interview-options"></div>
+                    <div id="interview-result" class="interview-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结局界面 -->
+        <div id="ending-screen" class="screen">
+            <div class="ending-container">
+                <h2 id="ending-title">🎓 毕业了！</h2>
+                <div id="ending-content" class="ending-content"></div>
+                <div id="final-stats" class="final-stats"></div>
+                <button id="restart-btn" class="btn btn-primary btn-large">再来一局</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/character.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/interview.js"></script>
+    <script src="js/actions.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
