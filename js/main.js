@@ -114,29 +114,22 @@ class GameController {
             case 'internship':
                 this.goInternship(special);
                 break;
-            case 'skipMonth':
-                // v1.3 豪华旅游等跳过月份的行动
-                this.skipMonth(special.months);
+            case 'endMonth':
+                // v1.3 结算行动触发结束月份
+                this.endMonthWithAction(special.isEntertainment);
                 break;
         }
     }
     
-    // v1.3 跳过月份（豪华旅游等）
-    skipMonth(months) {
-        this.ui.addLog(`🏖️ 享受假期中...`, 'info');
-        
-        const result = this.game.skipMonths(months, false);
-        
-        this.ui.addLog(`✅ 假期结束，精神焕发！`, 'success');
-        
-        // 更新UI
-        this.ui.updateAll(this.game);
-        this.renderActions();
-        
-        // 检查游戏是否结束
-        if (result.endCheck) {
-            this.handleGameEnd(result.endCheck);
+    // v1.3 结算行动结束月份
+    endMonthWithAction(isEntertainment) {
+        // 标记娱乐消费
+        if (isEntertainment) {
+            this.game.hadEntertainmentThisMonth = true;
         }
+        
+        // 执行正常的结束月份流程
+        this.endMonth();
     }
     
     // 开始面试
@@ -246,6 +239,11 @@ class GameController {
         result.results.forEach(r => {
             this.ui.addLog(`   ${r}`, 'info');
         });
+        
+        // v1.3 实习GPA惩罚（3个月不上课，期末大概率挂科）
+        const gpaPenalty = -0.8;
+        this.game.character.modifyGPA(gpaPenalty);
+        this.ui.addLog(`📉 实习期间缺课，GPA ${gpaPenalty}`, 'warning');
         
         this.ui.addLog(`✅ 实习结束！获得了宝贵的工作经验`, 'success');
         

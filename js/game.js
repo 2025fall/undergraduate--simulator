@@ -21,6 +21,7 @@ class Game {
         this.hadLowSanity = false;  // 曾经低心态（用于成就）
         this.isGameOver = false;
         this.isInternship = false;  // v1.3 是否正在实习
+        this.hadEntertainmentThisMonth = false;  // v1.3 本月是否有娱乐消费
         
         // 候选角色
         this.candidates = [];
@@ -89,6 +90,14 @@ class Game {
         const sanityDecay = CONFIG.SANITY_DECAY[phase] || 2;
         this.character.modifySanity(-sanityDecay);
         results.push(`心态自然衰减 -${sanityDecay}`);
+        
+        // v1.3 枯燥惩罚（当月无娱乐消费）
+        if (!this.hadEntertainmentThisMonth) {
+            const boredomPenalty = CONFIG.BOREDOM_PENALTY || 10;
+            this.character.modifySanity(-boredomPenalty);
+            results.push(`枯燥惩罚（无娱乐）心态 -${boredomPenalty}`);
+        }
+        this.hadEntertainmentThisMonth = false;
         
         // v1.3 经济结算
         const financeResult = this.character.processMonthlyFinance();

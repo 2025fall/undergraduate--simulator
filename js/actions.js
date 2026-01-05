@@ -95,10 +95,21 @@ class ActionSystem {
             results.push(`消耗金钱 ${action.moneyCost}元`);
         }
         
+        // v1.3 兼职打工获取金钱
+        if (action.moneyGain > 0) {
+            this.game.character.modifyMoney(action.moneyGain);
+            results.push(`获得金钱 +${action.moneyGain}元`);
+        }
+        
         // v1.3 恢复精力（休息类行动）
         if (action.restoreEnergy) {
             this.game.character.restoreEnergy();
             results.push(`精力已恢复`);
+        }
+        
+        // v1.3 标记娱乐消费
+        if (action.isEntertainment) {
+            this.game.hadEntertainmentThisMonth = true;
         }
         
         // 应用心态消耗
@@ -159,11 +170,11 @@ class ActionSystem {
             results.push(`📚 考研备考 +${preparePoints}`);
         }
         
-        // v1.3 豪华旅游跳过一个月
-        if (action.skipMonth) {
+        // v1.3 结算行动触发结束月份
+        if (action.endMonth) {
             specialResult = {
-                type: 'skipMonth',
-                months: 1
+                type: 'endMonth',
+                isEntertainment: action.isEntertainment || false
             };
         }
         
