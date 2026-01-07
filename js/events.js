@@ -61,7 +61,7 @@ class EventSystem {
             
             // 互联网世家的内推事件
             if (specialEvent.type === 'referral' && 
-                this.game.currentMonth >= specialEvent.triggerMonth &&
+                this.game.currentQuarter === specialEvent.triggerQuarter &&
                 !this.triggeredEvents.has('family_referral')) {
                 
                 if (Math.random() < specialEvent.chance) {
@@ -127,7 +127,7 @@ class EventSystem {
         // 特殊效果：获得实习offer
         if (choice.grantInternshipOffer) {
             this.game.hasInternshipOffer = true;
-            this.game.internshipCompany = { name: '亲戚公司(内推)', tier: 'T1.5' };
+            this.game.internshipCompany = choice.internshipCompany || { name: '亲戚公司(内推)', tier: 'T1.5' };
             results.push('🎉 获得实习内推机会！');
         }
         

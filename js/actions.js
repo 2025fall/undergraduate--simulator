@@ -41,9 +41,6 @@ class ActionSystem {
             if (action.id === 'applyJob' || action.id === 'prepareGraduate') {
                 return '大四才能解锁';
             }
-            if (action.id === 'entertainment' || action.id === 'luxuryTrip') {
-                return '金钱不足';
-            }
             return '条件不满足';
         }
         if (!canAffordEnergy) {
@@ -123,7 +120,30 @@ class ActionSystem {
             const effectResults = this.applyEffects(action.effects);
             results.push(...effectResults);
         }
+
+        if (action.fillSanity) {
+            const recovered = this.game.character.maxSanity - this.game.character.sanity;
+            this.game.character.sanity = this.game.character.maxSanity;
+            if (recovered > 0) {
+                results.push(`心态 +${recovered}（回满）`);
+            }
+        }
         
+        if (action.id === 'civilService') {
+            this.game.civilServiceCount = (this.game.civilServiceCount || 0) + 1;
+        }
+
+        if (action.id === 'coding') {
+            const mentorCfg = CONFIG.IQ_EVENTS.mentorReferral;
+            if (!this.game.hasT1FreePass &&
+                this.game.character.iq >= mentorCfg.iqThreshold &&
+                Math.random() < mentorCfg.triggerChance) {
+                this.game.hasT1FreePass = true;
+                this.game.character.addResumeItem(mentorCfg.reward);
+                results.push(`🎯 智商奇遇：${mentorCfg.reward}`);
+            }
+        }
+
         // 检查简历亮点获取
         if (action.resumeChance && Math.random() < action.resumeChance) {
             const resumeItem = action.resumeItems[Math.floor(Math.random() * action.resumeItems.length)];
@@ -144,10 +164,10 @@ class ActionSystem {
         }
         
         // 去实习（跳过时间）
-        if (action.skipMonths) {
+        if (action.skipQuarters) {
             specialResult = {
                 type: 'internship',
-                skipMonths: action.skipMonths,
+                skipQuarters: action.skipQuarters,
                 company: this.game.internshipCompany
             };
             

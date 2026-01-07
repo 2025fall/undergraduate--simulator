@@ -57,7 +57,8 @@ class GameController {
         this.ui.addLog(`🎓 欢迎来到大学！你是一名${school.displayName}的新生`, 'success');
         this.ui.addLog(`👨‍👩‍👧 家庭背景：${character.familyType} - ${family.buff}`, 'info');
         this.ui.addLog(`📊 初始属性：GPA ${character.gpa.toFixed(2)} | 项目 ${character.project} | 八股 ${character.knowledge} | 软技能 ${character.softskill}`, 'info');
-        this.ui.addLog(`💰 初始资金：${character.money.toLocaleString()}元 | 每月生活费：${character.monthlyAllowance}元`, 'info');
+        const allowance = character.quarterlyAllowance || character.getFamilyConfig?.()?.quarterlyAllowance || 0;
+        this.ui.addLog(`💰 初始资金：${character.money.toLocaleString()}元 | 季度补贴：${allowance.toLocaleString()}元`, 'info');
         this.ui.addLog('💪 开始你的大学生涯吧！', 'info');
     }
     
@@ -146,6 +147,10 @@ class GameController {
         
         this.ui.addLog(result.message, 'success');
         this.ui.updateInterviewCompany(result.company.name);
+        if (result.usedFreePass) {
+            this.ui.addLog('🎟️ 启动T1免试券，直接敲开大厂大门', 'info');
+        }
+        this.ui.updateInterviewPressure(result.pressure);
         
         // 显示第一个问题
         this.showNextInterviewQuestion();
@@ -156,22 +161,18 @@ class GameController {
         const question = this.game.getInterviewQuestion();
         const progress = this.game.interviewSystem.getProgress();
         
-        this.ui.showInterviewQuestion(question, progress, (optionIndex) => {
-            this.answerInterviewQuestion(question, optionIndex);
+        this.ui.showInterviewQuestion(question, progress, (strategyId) => {
+            this.answerInterviewQuestion(question, strategyId);
         });
     }
     
     // 回答面试问题
-    answerInterviewQuestion(question, optionIndex) {
-        const answerResult = this.game.answerInterviewQuestion(question, optionIndex);
+    answerInterviewQuestion(question, strategyId) {
+        const result = this.game.answerInterviewQuestion(question, strategyId);
         
-        // 处理轮次结果
-        const roundResult = this.game.processInterviewRound(answerResult.passed);
-        
-        // 显示结果
         setTimeout(() => {
-            this.ui.showInterviewRoundResult(roundResult, (result) => {
-                this.handleInterviewRoundEnd(result);
+            this.ui.showInterviewRoundResult(result, (roundOutcome) => {
+                this.handleInterviewRoundEnd(roundOutcome);
             });
         }, 500);
     }
@@ -233,12 +234,15 @@ class GameController {
             this.ui.addLog(`🏠 已租房，每月租金 ${this.game.character.rentCost}元`, 'warning');
         }
         
-        const result = this.game.skipMonths(special.skipMonths, true);
-        
-        // 显示实习期间的结算
-        result.results.forEach(r => {
-            this.ui.addLog(`   ${r}`, 'info');
-        });
+        const skipTimes = special.skipQuarters || 1;
+        let result = null;
+        for (let i = 0; i < skipTimes; i++) {
+            result = this.game.skipQuarter(true);
+            result.results.forEach(r => {
+                this.ui.addLog(`   ${r}`, 'info');
+            });
+            if (result.endCheck) break;
+        }
         
         // v1.3 实习GPA惩罚（3个月不上课，期末大概率挂科）
         const gpaPenalty = -0.8;

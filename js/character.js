@@ -4,6 +4,7 @@ class Character {
     constructor(data) {
         // 基础信息
         this.schoolType = data.schoolType;
+        this.schoolName = data.schoolName || CONFIG.SCHOOLS[this.schoolType]?.displayName;
         this.familyType = data.familyType;
         
         // 显性属性
@@ -26,10 +27,12 @@ class Character {
         
         // Buff效果
         this.sanityRecoveryBonus = CONFIG.FAMILIES[this.familyType]?.sanityRecoveryBonus || 0;
+        this.quarterlyAllowance = CONFIG.FAMILIES[this.familyType]?.quarterlyAllowance || 0;
+        this.quarterlyGap = CONFIG.FAMILIES[this.familyType]?.quarterlyGap || 0;
         
         // v1.3 经济系统
         this.money = CONFIG.FAMILIES[this.familyType]?.initialMoney || 5000;
-        this.monthlyAllowance = CONFIG.FAMILIES[this.familyType]?.monthlyAllowance || 2000;
+        this.monthlyAllowance = CONFIG.FAMILIES[this.familyType]?.monthlyAllowance || 0;
         this.isOnBudget = false;  // 省吃俭用模式
         this.rentCost = 0;  // 当前租房费用
         this.isRenting = false;  // 是否在租房
@@ -57,7 +60,13 @@ class Character {
     // 获取经验倍率（基于IQ）
     getExpMultiplier() {
         // IQ范围30-100，倍率0.8-1.5
-        return 0.8 + (this.iq - 30) / 100 * 0.7;
+        const base = 0.8 + (this.iq - 30) / 100 * 0.7;
+        const schoolMultiplier = CONFIG.SCHOOLS[this.schoolType]?.iqMultiplier || 1;
+        return base * schoolMultiplier;
+    }
+
+    getInterviewPressureBonus() {
+        return CONFIG.SCHOOLS[this.schoolType]?.pressureBonus || 0;
     }
     
     // 获取简历通过率
@@ -218,6 +227,7 @@ class Character {
     getSummary() {
         return {
             school: CONFIG.SCHOOLS[this.schoolType].displayName,
+            schoolName: this.schoolName,
             family: this.familyType,
             gpa: this.gpa.toFixed(2),
             project: this.project,
@@ -256,17 +266,22 @@ class CharacterGenerator {
         const schoolTypes = Object.keys(CONFIG.SCHOOLS);
         const familyTypes = Object.keys(CONFIG.FAMILIES);
         
-        // 加权随机选择学校（越好的学校概率越低）
         const schoolWeights = {
             'Top2': 0.05,
             '985': 0.15,
-            '211': 0.25,
-            '双非': 0.35,
-            '民办': 0.20
+            '211': 0.30,
+            '双非': 0.40,
+            '民办': 0.10
+        };
+        const familyWeights = {
+            '富二代': 0.05,
+            '互联网世家': 0.10,
+            '中产家庭': 0.35,
+            '工薪阶层': 0.50
         };
         
         const schoolType = this.weightedRandomChoice(schoolTypes, schoolWeights);
-        const familyType = this.randomChoice(familyTypes);
+        const familyType = this.weightedRandomChoice(familyTypes, familyWeights);
         
         const schoolConfig = CONFIG.SCHOOLS[schoolType];
         const familyConfig = CONFIG.FAMILIES[familyType];
@@ -280,8 +295,11 @@ class CharacterGenerator {
         // 生成隐藏IQ（基于学校）
         const iq = this.randomInRange(schoolConfig.iqRange[0], schoolConfig.iqRange[1]);
         
+        const schoolName = this.randomChoice(schoolConfig.representatives || [schoolConfig.displayName]);
+        
         return new Character({
             schoolType,
+            schoolName,
             familyType,
             gpa: Math.round(gpa * 100) / 100,
             project,

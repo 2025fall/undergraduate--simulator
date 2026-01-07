@@ -67,6 +67,9 @@ class UIController {
             interviewQuestion: document.getElementById('interview-question'),
             interviewOptions: document.getElementById('interview-options'),
             interviewResult: document.getElementById('interview-result'),
+            interviewPressureBar: document.getElementById('interview-pressure-bar'),
+            interviewPressureText: document.getElementById('interview-pressure-text'),
+            interviewTag: document.getElementById('interview-tag'),
             
             // 结局
             endingTitle: document.getElementById('ending-title'),
@@ -201,7 +204,8 @@ class UIController {
         const school = CONFIG.SCHOOLS[character.schoolType];
         const family = CONFIG.FAMILIES[character.familyType];
         
-        this.elements.charSchool.textContent = school.displayName;
+        const schoolLabel = character.schoolName ? `${character.schoolName} (${school.displayName})` : school.displayName;
+        this.elements.charSchool.textContent = schoolLabel;
         this.elements.charSchool.className = `value school-${character.schoolType}`;
         this.elements.charFamily.textContent = character.familyType;
     }
@@ -228,12 +232,9 @@ class UIController {
         // v1.3 金钱显示
         if (this.elements.moneyText) {
             this.elements.moneyText.textContent = `${character.money.toLocaleString()}元`;
-            // 省吃俭用或负债警告
-            if (character.money < 0) {
-                this.elements.moneyText.classList.add('money-warning');
-            } else {
-                this.elements.moneyText.classList.remove('money-warning');
-            }
+            const moneyEl = this.elements.moneyText;
+            moneyEl.classList.toggle('money-warning', character.money < 0);
+            moneyEl.classList.toggle('money-critical', character.money >= 0 && character.money < 1000);
         }
     }
     
@@ -344,34 +345,38 @@ class UIController {
         this.showModal('event');
     }
     
+    updateInterviewPressure(pressure) {
+        if (!pressure || !this.elements.interviewPressureBar) return;
+        const percent = Math.min(100, Math.round((pressure.value / pressure.limit) * 100));
+        this.elements.interviewPressureBar.style.width = `${percent}%`;
+        this.elements.interviewPressureBar.classList.toggle('danger', percent >= 80);
+        this.elements.interviewPressureText.textContent = `${pressure.value}/${pressure.limit}`;
+    }
+
     // 显示面试问题
     showInterviewQuestion(question, progress, onAnswer) {
-        this.elements.interviewRound.textContent = `第${question.roundIndex}/${question.totalRounds}轮 - ${question.roundName}`;
+        if (!question) return;
+        this.elements.interviewRound.textContent = `第${question.roundIndex}/${question.totalRounds}轮`;
         this.elements.interviewQuestion.textContent = question.question;
         this.elements.interviewResult.classList.remove('show');
+        this.elements.interviewTag.textContent = `${question.tag.icon} ${question.tag.label}`;
+        this.updateInterviewPressure(progress?.pressure);
         
         this.elements.interviewOptions.innerHTML = '';
-        question.options.forEach((option, index) => {
+        Object.values(INTERVIEW_STRATEGIES).forEach(strategy => {
             const btn = document.createElement('button');
-            btn.className = 'interview-option';
-            btn.textContent = option.text;
+            btn.className = 'interview-option strategy-option';
+            btn.innerHTML = `
+                <span class="strategy-name">${strategy.name}</span>
+                <span class="strategy-desc">${strategy.description}</span>
+            `;
             btn.addEventListener('click', () => {
-                // 禁用所有选项
                 this.elements.interviewOptions.querySelectorAll('.interview-option').forEach(b => {
                     b.disabled = true;
+                    b.classList.remove('selected');
                 });
-                
-                // 标记选中和正确答案
-                btn.classList.add(option.correct ? 'correct' : 'wrong');
-                if (!option.correct) {
-                    this.elements.interviewOptions.querySelectorAll('.interview-option').forEach((b, i) => {
-                        if (question.options[i].correct) {
-                            b.classList.add('correct');
-                        }
-                    });
-                }
-                
-                onAnswer(index);
+                btn.classList.add('selected');
+                onAnswer(strategy.id);
             });
             this.elements.interviewOptions.appendChild(btn);
         });
@@ -381,22 +386,30 @@ class UIController {
     
     // 显示面试轮次结果
     showInterviewRoundResult(result, onContinue) {
-        this.elements.interviewResult.className = `interview-result show ${result.passed ? 'pass' : 'fail'}`;
-        
+        this.updateInterviewPressure(result.pressure);
+        const statusClass = result.success ? 'pass' : 'fail';
+        this.elements.interviewResult.className = `interview-result show ${statusClass}`;
+
+        const pressureInfo = `${result.pressure.value}/${result.pressure.limit}`;
+        const delta = result.pressureChange > 0 ? `+${result.pressureChange}` : result.pressureChange;
+        const summary = result.success ? '✅ 策略奏效，压力下降' : (result.pressureBreak ? '💥 压力爆表！' : '⚠️ 压力飙升');
+
         if (result.interviewEnded) {
+            const btnClass = result.passed ? 'btn-success' : 'btn-secondary';
+            const btnText = result.passed ? '查看结果' : '继续加油';
             this.elements.interviewResult.innerHTML = `
-                <p>${result.message}</p>
-                <button class="btn ${result.success ? 'btn-success' : 'btn-secondary'}" id="interview-continue">
-                    ${result.success ? '查看结果' : '继续加油'}
-                </button>
+                <p>${summary}</p>
+                <p>压力变化 ${delta} | 当前 ${pressureInfo}</p>
+                <button class="btn ${btnClass}" id="interview-continue">${btnText}</button>
             `;
         } else {
             this.elements.interviewResult.innerHTML = `
-                <p>${result.message}</p>
+                <p>${summary}</p>
+                <p>压力变化 ${delta} | 当前 ${pressureInfo}</p>
                 <button class="btn btn-primary" id="interview-continue">下一轮</button>
             `;
         }
-        
+
         document.getElementById('interview-continue').addEventListener('click', () => {
             onContinue(result);
         });

@@ -88,51 +88,63 @@ const CONFIG = {
         DECISION: { start: 13, end: 16, name: '大四', icon: '🎯' }
     },
     
-    // 学校背景配置
+    // 学校背景配置（实名化 + 隐藏特性）
     SCHOOLS: {
         'Top2': {
             name: 'Top2',
             displayName: '清北/Top2',
-            iqRange: [85, 100],
-            gpaRange: [3.6, 3.9],
-            projectRange: [20, 50],
-            knowledgeRange: [30, 60],
-            softskillRange: [20, 40],
+            iqRange: [90, 100],
+            gpaRange: [3.7, 3.95],
+            projectRange: [25, 55],
+            knowledgeRange: [35, 65],
+            softskillRange: [25, 45],
             resumePassRate: 0.95,
-            description: '天之骄子，简历自带光环'
+            iqMultiplier: 1.5,
+            pressureBonus: 10,
+            hiddenTrait: '天才光环：经验获取1.5x',
+            representatives: ['清华大学', '北京大学']
         },
         '985': {
             name: '985',
             displayName: '985高校',
-            iqRange: [70, 90],
-            gpaRange: [3.4, 3.7],
-            projectRange: [10, 40],
-            knowledgeRange: [20, 50],
-            softskillRange: [15, 35],
-            resumePassRate: 0.80,
-            description: '名校出身，竞争力强'
+            iqRange: [75, 90],
+            gpaRange: [3.5, 3.8],
+            projectRange: [15, 45],
+            knowledgeRange: [25, 55],
+            softskillRange: [18, 38],
+            resumePassRate: 0.85,
+            iqMultiplier: 1.2,
+            pressureBonus: 5,
+            hiddenTrait: '名校背书：面试初始压力降低',
+            representatives: ['复旦大学', '上海交通大学', '浙江大学', '南京大学', '中国科学技术大学', '哈尔滨工业大学', '西安交通大学', '北京航空航天大学', '同济大学', '中山大学']
         },
         '211': {
             name: '211',
             displayName: '211高校',
             iqRange: [55, 75],
             gpaRange: [3.3, 3.6],
-            projectRange: [5, 30],
-            knowledgeRange: [15, 40],
-            softskillRange: [10, 30],
-            resumePassRate: 0.60,
-            description: '中坚力量，需要努力证明'
+            projectRange: [8, 30],
+            knowledgeRange: [15, 45],
+            softskillRange: [12, 32],
+            resumePassRate: 0.65,
+            iqMultiplier: 1.0,
+            pressureBonus: 0,
+            hiddenTrait: '稳扎稳打：无额外加成',
+            representatives: ['北京邮电大学', '西安电子科技大学', '华东师范大学', '暨南大学', '武汉理工大学', '苏州大学', '中央财经大学', '北京交通大学']
         },
         '双非': {
             name: '双非',
             displayName: '双非一本',
             iqRange: [40, 65],
             gpaRange: [3.2, 3.5],
-            projectRange: [0, 20],
-            knowledgeRange: [10, 30],
+            projectRange: [0, 22],
+            knowledgeRange: [10, 32],
             softskillRange: [5, 25],
-            resumePassRate: 0.40,
-            description: '简历海投，努力改命'
+            resumePassRate: 0.45,
+            iqMultiplier: 0.95,
+            pressureBonus: 0,
+            hiddenTrait: '凡人剧本：需要付出更多努力',
+            representatives: ['深圳大学', '杭州电子科技大学', '重庆邮电大学', '广州工业大学', '燕山大学', '某省理工大学']
         },
         '民办': {
             name: '民办',
@@ -142,56 +154,64 @@ const CONFIG = {
             projectRange: [0, 15],
             knowledgeRange: [5, 25],
             softskillRange: [0, 20],
-            resumePassRate: 0.20,
-            description: '困难模式，逆天改命'
+            resumePassRate: 0.25,
+            iqMultiplier: 0.9,
+            pressureBonus: -5,
+            hiddenTrait: '地狱模式：简历极易被挂',
+            representatives: ['三亚学院', '某大学城市学院', '某职业技术大学']
         }
     },
     
-    // 家庭背景配置（v1.3 资金重调）
+    // 家庭背景配置
     FAMILIES: {
         '富二代': {
             name: '富二代',
-            buff: '初始5万 + 每月8000',
+            buff: '初始5万 / 季补2.4万',
             sanityRecoveryBonus: 0.5,
             energyBonus: 0,
             softskillBonus: 0,
             initialMoney: 50000,
-            monthlyAllowance: 8000,
+            quarterlyAllowance: 24000,
+            luxuryAccess: true,
             specialEvent: null,
-            description: '家里有矿，财务自由'
+            description: '钞能力：心态修复更快，可解锁奢靡生活'
         },
         '中产家庭': {
             name: '中产家庭',
-            buff: '初始5000 + 每月2500',
+            buff: '初始5000 / 季补7500',
             sanityRecoveryBonus: 0,
             energyBonus: 0,
-            softskillBonus: 10,
+            softskillBonus: 20,
             initialMoney: 5000,
-            monthlyAllowance: 2500,
+            quarterlyAllowance: 7500,
+            luxuryAccess: false,
             specialEvent: null,
-            description: '见过世面，情商在线'
+            description: '素质教育：初始软技能+20'
         },
         '互联网世家': {
             name: '互联网世家',
-            buff: '初始1.5万 + 内推机会',
+            buff: '初始1万 / 季补9000 / 内推机会',
             sanityRecoveryBonus: 0,
             energyBonus: 0,
             softskillBonus: 0,
-            initialMoney: 15000,
-            monthlyAllowance: 3000,
-            specialEvent: { type: 'referral', chance: 0.3, triggerMonth: 25 },
-            description: '人脉资源，内推机会'
+            initialMoney: 10000,
+            quarterlyAllowance: 9000,
+            luxuryAccess: false,
+            specialEvent: { type: 'referral', chance: 0.3, triggerQuarter: 9 },
+            description: '人脉：大三有机会拿到T1内推'
         },
         '工薪阶层': {
             name: '工薪阶层',
-            buff: '初始1000 + 每月1200',
+            buff: '初始1000 / 季补3600',
             sanityRecoveryBonus: 0,
             energyBonus: 20,
             softskillBonus: 0,
             initialMoney: 1000,
-            monthlyAllowance: 1200,
+            quarterlyAllowance: 3600,
+            luxuryAccess: false,
+            quarterlyGap: 1200,
             specialEvent: null,
-            description: '生存压力大，需兼职或省吃俭用'
+            description: '早当家：精力上限120，但每季度有1200缺口'
         }
     },
     
@@ -221,103 +241,97 @@ const CONFIG = {
 // v1.4 行动配置（季度制）
 const ACTIONS = {
     // 基础行动（全阶段可用）
-    // v1.4 认真上课
     study: {
         id: 'study',
-        name: '📖 认真上课',
-        description: '认真听课完成作业，GPA+0.2，心态-10',
-        energyCost: 40,
+        name: '📖 专注学业',
+        description: '认真听课完成作业，GPA+0.2，心态-5',
+        energyCost: 30,
         effects: {
             gpa: { base: 0.2, variance: 0.02 },
-            sanity: { base: -10, variance: 2 }
+            sanity: { base: -5, variance: 1 }
         },
         available: () => true
     },
-    // v1.4 新增操场跑步
     running: {
         id: 'running',
         name: '🏃 操场跑步',
-        description: '锻炼身体，心态+20',
-        energyCost: 30,
-        moneyCost: 0,
+        description: '操场拉练回血，穷学生必备',
+        energyCost: 20,
         effects: {
-            sanity: { base: 20, variance: 3 }
+            sanity: { base: 15, variance: 3 }
         },
         available: () => true
     },
-    // v1.4 新增社团活动
     clubActivity: {
         id: 'clubActivity',
         name: '🎭 社团活动',
-        description: '参加社团活动，心态+30，软技能+5（100元）',
-        energyCost: 40,
-        moneyCost: 100,
+        description: '社团/聚餐，软技能+8，心态+20（-200元）',
+        energyCost: 30,
+        moneyCost: 200,
         effects: {
-            sanity: { base: 30, variance: 5 },
-            softskill: { base: 5, variance: 2 }
+            sanity: { base: 20, variance: 4 },
+            softskill: { base: 8, variance: 2 }
         },
-        available: (game) => game.character.money >= 100
+        available: (game) => game.character.money >= 200
     },
-    // v1.4 包装项目
     coding: {
         id: 'coding',
         name: '💻 包装项目',
-        description: '做项目包装简历，但会影响学业',
-        energyCost: 30,
+        description: '包装履历换项目，牺牲成绩和心态',
+        energyCost: 50,
         effects: {
-            project: { base: 8, variance: 4 },
-            gpa: { base: -0.2, variance: 0 }
+            project: { base: 25, variance: 5 },
+            gpa: { base: -0.3, variance: 0.05 },
+            sanity: { base: -15, variance: 3 }
         },
         available: () => true
     },
     readBooks: {
         id: 'readBooks',
-        name: '📚 刷题/背八股',
-        description: '背诵面试八股，枯燥但必要',
-        energyCost: 20,
+        name: '📚 闭关刷题',
+        description: '枯燥八股+15，心态-10',
+        energyCost: 30,
         effects: {
-            knowledge: { base: 8, variance: 3 },
-            sanity: { base: -5, variance: 2 }
+            knowledge: { base: 15, variance: 4 },
+            sanity: { base: -10, variance: 2 }
         },
         available: () => true
     },
-    socializing: {
-        id: 'socializing',
-        name: '🗣️ 社交活动',
-        description: '参加社团、聚会，锻炼软技能',
-        energyCost: 20,
+    workStudy: {
+        id: 'workStudy',
+        name: '🧾 勤工俭学',
+        description: '校园打工填补缺口，软技能+2，金钱+1200',
+        energyCost: 30,
+        moneyGain: 1200,
         effects: {
-            softskill: { base: 8, variance: 4 },
-            sanity: { base: 5, variance: 3 }
+            softskill: { base: 2, variance: 1 },
+            sanity: { base: -10, variance: 2 }
         },
         available: () => true
     },
-    // v1.4 疯狂打工（替代原兼职打工）
     hardWork: {
         id: 'hardWork',
         name: '💪 疯狂打工',
-        description: '拼命赚钱，金钱+2000，GPA-0.4，心态-30',
+        description: '拼命赚钱，金钱+3000，GPA-0.4，心态-40',
         energyCost: 50,
         effects: {
             gpa: { base: -0.4, variance: 0 },
-            sanity: { base: -30, variance: 5 }
+            sanity: { base: -40, variance: 5 }
         },
-        moneyGain: 2000,
+        moneyGain: 3000,
         available: () => true
     },
-    // v1.4 新增公考
     civilService: {
         id: 'civilService',
         name: '📋 公考备考',
-        description: '备考公务员考试，公考率+15%，心态-15（Q13解锁）',
-        energyCost: 40,
+        description: '大四备考公考，公考积累+15，心态-10（Q13解锁）',
+        energyCost: 30,
         effects: {
             civilServiceRate: { base: 15, variance: 0 },
-            sanity: { base: -15, variance: 3 }
+            sanity: { base: -10, variance: 2 }
         },
         available: (game) => game.currentQuarter >= 13
     },
-    // v1.4 结算行动：宿舍摆烂
     sleepSettle: {
         id: 'sleepSettle',
         name: '😴 【结算】宿舍摆烂',
@@ -332,20 +346,48 @@ const ACTIONS = {
         isEntertainment: false,
         available: () => true
     },
-    // v1.4 结算行动：特种兵旅游
-    backpackTrip: {
-        id: 'backpackTrip',
-        name: '🎒 【结算】特种兵旅游',
-        description: '进入下季度，精力回满，心态+60（1000元）',
+    gatheringSettle: {
+        id: 'gatheringSettle',
+        name: '🍲 【结算】聚餐娱乐',
+        description: '花200元和朋友聚餐，心态+40',
         energyCost: 0,
-        moneyCost: 1000,
+        moneyCost: 200,
         effects: {
-            sanity: { base: 60, variance: 5 }
+            sanity: { base: 40, variance: 4 }
         },
         restoreEnergy: true,
         endQuarter: true,
         isEntertainment: true,
-        available: (game) => game.character.money >= 1000
+        available: (game) => game.character.money >= 200
+    },
+    travelSettle: {
+        id: 'travelSettle',
+        name: '🎒 【结算】特种兵旅游',
+        description: '1500元特种兵旅行，心态+80',
+        energyCost: 0,
+        moneyCost: 1500,
+        effects: {
+            sanity: { base: 80, variance: 6 }
+        },
+        restoreEnergy: true,
+        endQuarter: true,
+        isEntertainment: true,
+        available: (game) => game.character.money >= 1500
+    },
+    luxurySettle: {
+        id: 'luxurySettle',
+        name: '💎 【结算】奢靡生活',
+        description: '5000元豪华消费，心态回满（富二代限定）',
+        energyCost: 0,
+        moneyCost: 5000,
+        fillSanity: true,
+        restoreEnergy: true,
+        endQuarter: true,
+        isEntertainment: true,
+        available: (game) => {
+            const family = game.character.getFamilyConfig?.();
+            return game.character.money >= 5000 && family?.luxuryAccess;
+        }
     },
     project: {
         id: 'project',
@@ -410,6 +452,58 @@ const ACTIONS = {
         },
         sanityDrain: 5,
         available: (game) => game.currentQuarter >= 13
+    }
+};
+
+// 面试标签与策略
+const INTERVIEW_TAGS = {
+    fundamentals: { label: '底层原理', icon: '🧠' },
+    practical: { label: '高并发/实战', icon: '⚔️' },
+    stress: { label: '抗压测试', icon: '🧘' }
+};
+
+const INTERVIEW_TAG_MAP = {
+    technical: 'fundamentals',
+    project: 'practical',
+    hr: 'stress'
+};
+
+const INTERVIEW_STRATEGIES = {
+    shield: {
+        id: 'shield',
+        name: '🛡️ 八股盾牌',
+        description: '用八股硬刚底层原理，稳扎稳打',
+        stat: 'knowledge',
+        counterTag: 'fundamentals',
+        baseSuccess: 0.6,
+        statScale: 120,
+        successPressure: -30,
+        failPressure: 18,
+        mismatchPenalty: 0.15
+    },
+    strike: {
+        id: 'strike',
+        name: '⚔️ 项目重击',
+        description: '用实战经历强攻，风险高收益也高',
+        stat: 'project',
+        counterTag: 'practical',
+        baseSuccess: 0.5,
+        statScale: 150,
+        successPressure: -40,
+        failPressure: 25,
+        mismatchPenalty: 0.2
+    },
+    talk: {
+        id: 'talk',
+        name: '🤝 舔狗话术',
+        description: '情绪价值拉满，适合HR/抗压场景',
+        stat: 'softskill',
+        counterTag: 'stress',
+        baseSuccess: 0.55,
+        statScale: 100,
+        successPressure: -20,
+        failPressure: 28,
+        mismatchPenalty: 0.1
     }
 };
 
@@ -734,7 +828,7 @@ const RANDOM_EVENTS = [
         title: '🍀 面试运气好',
         description: '上次面试的题目你刚好准备过！',
         probability: 0.05,
-        condition: (game) => game.currentMonth >= 25,
+        condition: (game) => game.currentQuarter >= 9,
         choices: [
             {
                 text: '运气也是实力',
@@ -766,7 +860,7 @@ const RANDOM_EVENTS = [
         title: '📧 拒信连击',
         description: '连续收到好几封拒信，心态有点崩...',
         probability: 0.15,
-        condition: (game) => game.currentMonth >= 25,
+        condition: (game) => game.currentQuarter >= 9,
         choices: [
             {
                 text: '调整心态，继续投',
@@ -783,7 +877,7 @@ const RANDOM_EVENTS = [
         title: '😰 同辈压力',
         description: '看到同学都拿到大厂offer了，好焦虑...',
         probability: 0.12,
-        condition: (game) => game.currentMonth >= 30,
+        condition: (game) => game.currentQuarter >= 11,
         choices: [
             {
                 text: '化压力为动力',
@@ -797,7 +891,7 @@ const RANDOM_EVENTS = [
     },
     {
         id: 'project_bug',
-        title: '?? 项目出Bug',
+        title: '🐞 项目出Bug',
         description: '你负责的模块出了严重bug，被老师/mentor批评了',
         probability: 0.1,
         condition: (game) => game.character.project >= 30,
@@ -834,7 +928,7 @@ const RANDOM_EVENTS = [
         title: '😔 冒名顶替综合征',
         description: '感觉自己什么都不会，配不上现在的一切...',
         probability: 0.1,
-        condition: (game) => game.currentMonth >= 20,
+        condition: (game) => game.currentQuarter >= 7,
         choices: [
             {
                 text: '和朋友聊聊，调整心态',
@@ -850,15 +944,25 @@ const RANDOM_EVENTS = [
     // 特殊事件
     {
         id: 'family_referral',
-        title: '?? 亲戚内推',
+        title: '🤝 亲戚内推',
         description: '家里有亲戚在大厂工作，愿意帮你内推！',
         probability: 0,  // 由家庭背景触发
-        condition: (game) => game.character.familyType === '互联网世家' && game.currentMonth >= 25,
+        condition: (game) => game.character.familyType === '互联网世家' && game.currentQuarter >= 9,
         choices: [
             {
                 text: '感谢亲戚，认真准备',
                 effects: { sanity: 10 },
-                grantInternshipOffer: true
+                grantInternshipOffer: true,
+                internshipCompany: {
+                    name: '字节亲戚事业群',
+                    tier: 'T1',
+                    dailySalary: 500,
+                    difficulty: 3,
+                    resumeValue: '🏢 T1 内推',
+                    projectBonus: 50,
+                    jobTypes: ['core_dev', 'backend'],
+                    geography: 'near'
+                }
             }
         ],
         isSpecial: true
@@ -868,7 +972,7 @@ const RANDOM_EVENTS = [
         title: '🎓 保研资格',
         description: '由于成绩优异，你获得了保研资格！',
         probability: 0,  // 条件触发
-        condition: (game) => game.character.gpa >= 3.8 && game.currentMonth === 36,
+        condition: (game) => game.character.gpa >= 3.8 && game.currentQuarter === 12,
         choices: [
             {
                 text: '接受保研，继续深造',
