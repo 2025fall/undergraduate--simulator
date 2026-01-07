@@ -687,6 +687,49 @@ body {
     border-color: var(--primary-color);
 }
 
+.settlement-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.settlement-option {
+    padding: 15px 18px;
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settlement-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.settlement-option:not(.disabled):hover {
+    border-color: var(--primary-color);
+    background: rgba(74, 144, 217, 0.15);
+}
+
+.settlement-option .option-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
+
+.settlement-option .option-cost {
+    color: #fbbf24;
+}
+
+.settlement-option .option-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
 /* 面试界面 */
 .interview-question {
     background: var(--card-bg);

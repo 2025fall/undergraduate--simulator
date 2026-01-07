@@ -22,7 +22,7 @@ class GameController {
         
         // 结束本季按钮
         this.ui.elements.endMonthBtn.addEventListener('click', () => {
-            this.endQuarter();
+            this.openSettlementModal();
         });
     }
     
@@ -64,7 +64,7 @@ class GameController {
     
     // 渲染行动按钮
     renderActions() {
-        const actions = this.game.getAvailableActions();
+        const actions = this.game.getAvailableActions().filter(action => !action.isSettlement);
         this.ui.renderActions(actions, (actionId) => {
             this.executeAction(actionId);
         });
@@ -90,6 +90,11 @@ class GameController {
         this.ui.updateStats(this.game.character);
         this.ui.updateResume(this.game.character);
         this.ui.updateAchievements(this.game.achievementSystem.getUnlockedAchievements());
+
+        if (this.game.isGameOver) {
+            this.handleGameEnd();
+            return;
+        }
         
         // 处理特殊行动
         if (result.special) {
@@ -105,6 +110,14 @@ class GameController {
         // 更新行动按钮
         this.renderActions();
     }
+
+    // 打开季度结算面板
+    openSettlementModal() {
+        const options = this.game.actionSystem.getSettlementActions();
+        this.ui.showSettlementOptions(options, (actionId) => {
+            this.executeAction(actionId);
+        });
+    }
     
     // 处理特殊行动
     handleSpecialAction(special) {
@@ -118,6 +131,9 @@ class GameController {
             case 'endQuarter':
                 // v1.3 结算行动触发结束季度
                 this.endQuarterWithAction(special.isEntertainment);
+                break;
+            case 'gameOver':
+                this.handleGameEnd();
                 break;
         }
     }
@@ -256,7 +272,11 @@ class GameController {
         this.renderActions();
         
         // 检查游戏是否结束
-        if (result.endCheck) {
+        if (result?.isGameOver) {
+            this.handleGameEnd(result.endCheck);
+            return;
+        }
+        if (result.endCheck && result.endCheck.type !== 'mental_breakdown') {
             this.handleGameEnd(result.endCheck);
         }
     }
@@ -267,12 +287,12 @@ class GameController {
         
         this.ui.addLog(`📅 Q${this.game.currentQuarter} 开始`, 'info');
         
-        // v1.3 显示经济结算信息
+        // 显示季度结算信息
         result.results.forEach(r => {
-            if (r.includes('生活费') || r.includes('开销') || r.includes('工资')) {
-                this.ui.addLog(`💰 ${r}`, 'info');
-            } else if (r.includes('心态')) {
-                this.ui.addLog(`🧠 ${r}`, 'warning');
+            if (r.includes('心态') || r.includes('崩溃') || r.includes('住院')) {
+                this.ui.addLog(r, 'warning');
+            } else {
+                this.ui.addLog(r, 'info');
             }
         });
         
@@ -337,6 +357,11 @@ class GameController {
             this.ui.updateResources(this.game.character);
             this.ui.updateStats(this.game.character);
             this.ui.updateResume(this.game.character);
+
+            if (this.game.isGameOver) {
+                this.handleGameEnd();
+                return;
+            }
             
             // 继续处理剩余事件
             setTimeout(() => {

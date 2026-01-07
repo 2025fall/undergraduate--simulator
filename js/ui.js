@@ -11,7 +11,8 @@ class UIController {
         
         this.modals = {
             event: document.getElementById('event-modal'),
-            interview: document.getElementById('interview-modal')
+            interview: document.getElementById('interview-modal'),
+            settlement: document.getElementById('settlement-modal')
         };
         
         this.elements = {
@@ -70,6 +71,7 @@ class UIController {
             interviewPressureBar: document.getElementById('interview-pressure-bar'),
             interviewPressureText: document.getElementById('interview-pressure-text'),
             interviewTag: document.getElementById('interview-tag'),
+            settlementOptions: document.getElementById('settlement-options'),
             
             // 结局
             endingTitle: document.getElementById('ending-title'),
@@ -117,9 +119,12 @@ class UIController {
         characters.forEach((char, index) => {
             const card = document.createElement('div');
             card.className = 'character-card';
+            const schoolConfig = CONFIG.SCHOOLS[char.schoolType];
+            const realSchool = char.schoolName || schoolConfig.displayName;
+            const schoolLabel = `${realSchool} (${schoolConfig.displayName})`;
             card.innerHTML = `
                 <div class="card-header">
-                    <span class="school-badge school-${char.schoolType}">${CONFIG.SCHOOLS[char.schoolType].displayName}</span>
+                    <span class="school-badge school-${char.schoolType}">${schoolLabel}</span>
                     <span class="family-tag">👨‍👩‍👧 ${char.familyType}</span>
                 </div>
                 <div class="card-stats">
@@ -343,6 +348,34 @@ class UIController {
         });
         
         this.showModal('event');
+    }
+
+    // 显示季度结算面板
+    showSettlementOptions(options, onSelect) {
+        if (!this.elements.settlementOptions) return;
+        this.elements.settlementOptions.innerHTML = '';
+
+        options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'settlement-option' + (option.available ? '' : ' disabled');
+            const costLabel = option.moneyCost ? `💰 ${option.moneyCost}` : '免费';
+            const reason = option.available ? '' : `<span class="reason">(${option.reason || '条件不足'})</span>`;
+            btn.innerHTML = `
+                <div class="option-header">
+                    <span>${option.name}</span>
+                    <span class="option-cost">${costLabel}</span>
+                </div>
+                <div class="option-desc">${option.description} ${reason}</div>
+            `;
+            btn.addEventListener('click', () => {
+                if (!option.available) return;
+                this.hideModal('settlement');
+                onSelect(option.id);
+            });
+            this.elements.settlementOptions.appendChild(btn);
+        });
+
+        this.showModal('settlement');
     }
     
     updateInterviewPressure(pressure) {

@@ -282,7 +282,7 @@ const ACTIONS = {
         effects: {
             project: { base: 25, variance: 5 },
             gpa: { base: -0.3, variance: 0.05 },
-            sanity: { base: -15, variance: 3 }
+            sanity: { base: -20, variance: 4 }
         },
         available: () => true
     },
@@ -344,6 +344,7 @@ const ACTIONS = {
         restoreEnergy: true,
         endQuarter: true,
         isEntertainment: false,
+        isSettlement: true,
         available: () => true
     },
     gatheringSettle: {
@@ -358,6 +359,7 @@ const ACTIONS = {
         restoreEnergy: true,
         endQuarter: true,
         isEntertainment: true,
+        isSettlement: true,
         available: (game) => game.character.money >= 200
     },
     travelSettle: {
@@ -372,6 +374,7 @@ const ACTIONS = {
         restoreEnergy: true,
         endQuarter: true,
         isEntertainment: true,
+        isSettlement: true,
         available: (game) => game.character.money >= 1500
     },
     luxurySettle: {
@@ -384,6 +387,7 @@ const ACTIONS = {
         restoreEnergy: true,
         endQuarter: true,
         isEntertainment: true,
+        isSettlement: true,
         available: (game) => {
             const family = game.character.getFamilyConfig?.();
             return game.character.money >= 5000 && family?.luxuryAccess;

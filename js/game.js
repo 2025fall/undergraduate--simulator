@@ -27,6 +27,8 @@ class Game {
         this.mentalBreakdownCount = 0;  // 精神崩溃次数
         this.civilServiceCount = 0;     // 公考准备次数
         this.hasT1FreePass = false;     // 是否有T1免笔试券
+        this.forceHospitalSkip = false;
+        this.hasDepressionDebuff = false;
         
         // 候选角色
         this.candidates = [];
@@ -61,7 +63,9 @@ class Game {
         this.mentalBreakdownCount = 0;  // v1.4
         this.civilServiceCount = 0;     // v1.4
         this.hasT1FreePass = false;     // v1.4
-        
+        this.forceHospitalSkip = false;
+        this.hasDepressionDebuff = false;
+
         return this.character;
     }
     
@@ -126,6 +130,64 @@ class Game {
             }
         }
         return logs;
+    }
+
+    evaluateMentalState(trigger = 'general') {
+        if (this.character.sanity > 0) {
+            return null;
+        }
+        return this.handleMentalBreakdown(trigger);
+    }
+
+    handleMentalBreakdown(trigger = 'general') {
+        this.mentalBreakdownCount++;
+
+        this.character.modifyGPA(-0.1);
+        this.character.modifyStat('project', -10, false);
+        this.character.modifyStat('knowledge', -10, false);
+        this.character.modifyStat('softskill', -10, false);
+
+        if (!this.hasDepressionDebuff) {
+            this.hasDepressionDebuff = true;
+            this.character.maxSanity = Math.min(this.character.maxSanity, 80);
+        }
+        this.character.sanity = Math.max(10, Math.round(this.character.maxSanity * 0.5));
+
+        this.forceHospitalSkip = true;
+
+        const info = {
+            type: 'mental_breakdown',
+            count: this.mentalBreakdownCount,
+            message: '💥 精神崩溃！被迫休学一个季度，全属性 -10，心态上限降至 80。'
+        };
+
+        if (this.mentalBreakdownCount >= 2) {
+            info.type = 'overwork_death';
+            info.message = '☠️ 连续崩溃两次，因过劳猝死，游戏结束。';
+            this.isGameOver = true;
+        }
+
+        return info;
+    }
+
+    processHospitalRest(results) {
+        if (!this.forceHospitalSkip) return null;
+        this.forceHospitalSkip = false;
+
+        const hospitalLogs = [
+            `🏥 因精神崩溃住院休学，跳过 Q${this.currentQuarter} 的全部行动`
+        ];
+
+        this.currentQuarter++;
+        this.character.restoreEnergy();
+
+        const recoverySanity = Math.max(40, Math.round(this.character.maxSanity * 0.6));
+        this.character.sanity = Math.min(this.character.maxSanity, recoverySanity);
+
+        this.applyQuarterEconomy(hospitalLogs);
+
+        results.push(...hospitalLogs);
+        return this.checkEndConditions('hospital');
     }
     
     // v1.4 结束当季度（原endMonth）
@@ -195,9 +257,14 @@ class Game {
         this.currentQuarter++;
         
         // 检查游戏结束条件
-        const endCheck = this.checkEndConditions();
-        if (endCheck) {
-            results.push(endCheck);
+        const endCheck = this.checkEndConditions('quarter_end');
+        if (endCheck && (endCheck.type === 'mental_breakdown' || endCheck.type === 'overwork_death')) {
+            results.push(endCheck.message);
+        }
+
+        const hospitalCheck = this.processHospitalRest(results);
+        if (hospitalCheck && (hospitalCheck.type === 'mental_breakdown' || hospitalCheck.type === 'overwork_death')) {
+            results.push(hospitalCheck.message);
         }
         
         // 检查成就
@@ -284,7 +351,7 @@ class Game {
         this.eventSystem.checkRandomEvents();
 
         this.currentQuarter++;
-        const endCheck = this.checkEndConditions();
+        const endCheck = this.checkEndConditions('skip');
 
         if (isInternship) {
             this.hasInternshipOffer = false;
@@ -293,24 +360,18 @@ class Game {
             this.character.setRenting(false, 0);
         }
 
-        return { results, endCheck };
+        return { 
+            results, 
+            endCheck,
+            isGameOver: this.isGameOver
+        };
     }
     
     // 检查游戏结束条件
-    checkEndConditions() {
-        // 心态归零（精神崩溃）
-        if (this.character.sanity <= 0) {
-            this.mentalBreakdownCount++;  // v1.4 记录崩溃次数
-            
-            // v1.4 过劳死结局（崩溃次数>=2）
-            if (this.mentalBreakdownCount >= 2) {
-                this.isGameOver = true;
-                return { type: 'overwork_death' };
-            }
-            
-            // 首次崩溃，恢复一些心态继续
-            this.character.sanity = 20;
-            return { type: 'mental_breakdown_warning', count: this.mentalBreakdownCount };
+    checkEndConditions(trigger = 'general') {
+        const mentalState = this.evaluateMentalState(trigger);
+        if (mentalState) {
+            return mentalState;
         }
         
         // GPA过低
@@ -382,7 +443,12 @@ class Game {
     
     // 处理事件选择
     processEventChoice(event, choiceIndex) {
-        return this.eventSystem.processEventChoice(event, choiceIndex);
+        const results = this.eventSystem.processEventChoice(event, choiceIndex);
+        const mentalState = this.evaluateMentalState('event');
+        if (mentalState) {
+            results.push(mentalState.message);
+        }
+        return results;
     }
     
     // 计算最终结局
@@ -530,6 +596,8 @@ class Game {
         this.mentalBreakdownCount = 0;  // v1.4
         this.civilServiceCount = 0;     // v1.4
         this.hasT1FreePass = false;     // v1.4
+        this.forceHospitalSkip = false;
+        this.hasDepressionDebuff = false;
         this.candidates = [];
     }
     

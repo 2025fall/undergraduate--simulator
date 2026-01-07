@@ -151,6 +151,15 @@ class ActionSystem {
                 results.push(`📄 获得简历亮点：${resumeItem}`);
             }
         }
+
+        // 行动后心态检查
+        const mentalState = this.game.evaluateMentalState('action');
+        if (mentalState) {
+            results.push(mentalState.message);
+            if (mentalState.type === 'overwork_death') {
+                specialResult = { type: 'gameOver', reason: 'overwork' };
+            }
+        }
         
         // 特殊行动处理
         let specialResult = null;
@@ -207,6 +216,11 @@ class ActionSystem {
             results: results,
             special: specialResult
         };
+    }
+
+    // 获取季度结算选项
+    getSettlementActions() {
+        return this.getAvailableActions().filter(action => action.isSettlement);
     }
     
     // 应用效果
