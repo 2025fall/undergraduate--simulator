@@ -3,39 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本科生模拟器：四年之�?/title>
+    <title>本科生模拟器：四年之约</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div id="app">
-        <!-- 开始界�?-->
+        <!-- 开始界面 -->
         <div id="start-screen" class="screen active">
             <div class="title-container">
                 <h1 class="game-title">🎓 本科生模拟器</h1>
                 <h2 class="game-subtitle">四年之约</h2>
-                <p class="game-desc">从大一萌新到秋招卷王，你能顶住内卷的压力吗�?/p>
+                <p class="game-desc">从大一萌新到秋招卷王，你能顶住内卷的压力吗？</p>
             </div>
-            <button id="start-btn" class="btn btn-primary btn-large">开始游�?/button>
-            <div class="version-info">v2.1 · Mental Health & Realism Update</div>
+            <button id="start-btn" class="btn btn-primary btn-large">开始游戏</button>
+            <div class="version-info">v2.1 · 心态真实进阶</div>
         </div>
 
         <!-- 角色选择界面 -->
         <div id="character-select-screen" class="screen">
-            <h2>🎲 命运的骰子已经掷�?..</h2>
-            <p class="hint">系统为你随机生成�?位候选人，请选择一位开始你的大学生�?/p>
+            <h2>🎲 命运的骰子已经掷下...</h2>
+            <p class="hint">系统为你随机生成了5位候选人，请选择一位开始你的大学生涯</p>
             <div id="character-cards" class="character-cards"></div>
         </div>
 
-        <!-- 游戏主界�?-->
+        <!-- 游戏主界面 -->
         <div id="game-screen" class="screen">
             <!-- 顶部状态栏 -->
             <div class="status-bar">
                 <div class="time-info">
                     <span id="current-year">大一</span>
-                    <span id="current-month">�?�?/span>
+                    <span id="current-month">第1月</span>
                     <span id="month-count">(1/48)</span>
                 </div>
-                <div class="phase-info" id="phase-info">📚 积累�?/div>
+                <div class="phase-info" id="phase-info">📚 积累期</div>
             </div>
 
             <!-- 角色信息面板 -->
@@ -45,11 +45,11 @@
                         <h3>👤 角色信息</h3>
                         <div class="character-info">
                             <div class="info-row">
-                                <span class="label">学校�?/span>
+                                <span class="label">学校：</span>
                                 <span id="char-school" class="value"></span>
                             </div>
                             <div class="info-row">
-                                <span class="label">家庭�?/span>
+                                <span class="label">家庭：</span>
                                 <span id="char-family" class="value"></span>
                             </div>
                         </div>
@@ -57,16 +57,16 @@
 
                     <!-- 资源面板 -->
                     <div class="panel resource-panel">
-                        <h3>💪 资源状�?/h3>
+                        <h3>💪 资源状态</h3>
                         <div class="resource-item">
-                            <span class="resource-label">�?精力</span>
+                            <span class="resource-label">⚡ 精力</span>
                             <div class="progress-bar">
                                 <div id="energy-bar" class="progress energy"></div>
                             </div>
                             <span id="energy-text" class="resource-value">100/100</span>
                         </div>
                         <div class="resource-item">
-                            <span class="resource-label">🧠 心�?/span>
+                            <span class="resource-label">🧠 心态</span>
                             <div class="progress-bar">
                                 <div id="sanity-bar" class="progress sanity"></div>
                             </div>
@@ -74,13 +74,13 @@
                         </div>
                         <div class="resource-item">
                             <span class="resource-label">💰 金钱</span>
-                            <span id="money-text" class="resource-value money-value">0�?/span>
+                            <span id="money-text" class="resource-value money-value">0元</span>
                         </div>
                     </div>
 
-                    <!-- 属性面�?-->
+                    <!-- 属性面板 -->
                     <div class="panel stats-panel">
-                        <h3>📊 四维属�?/h3>
+                        <h3>📊 四维属性</h3>
                         <div class="stat-item">
                             <span class="stat-label">📖 学业 (GPA)</span>
                             <span id="stat-gpa" class="stat-value">3.50</span>
@@ -90,20 +90,20 @@
                             <span id="stat-project" class="stat-value">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">📚 八股�?/span>
+                            <span class="stat-label">📚 八股分</span>
                             <span id="stat-knowledge" class="stat-value">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">🗣�?软技�?/span>
+                            <span class="stat-label">🗣️ 软技能</span>
                             <span id="stat-softskill" class="stat-value">0</span>
                         </div>
                     </div>
 
-                    <!-- 简历面�?-->
+                    <!-- 简历面板 -->
                     <div class="panel resume-panel">
-                        <h3>📄 简历亮�?/h3>
+                        <h3>📄 简历亮点</h3>
                         <ul id="resume-list" class="resume-list">
-                            <li class="empty-hint">暂无亮点，快去积累吧�?/li>
+                            <li class="empty-hint">暂无亮点，快去积累吧！</li>
                         </ul>
                     </div>
                 </div>
@@ -171,7 +171,7 @@
                 <div class="modal-header">
                     <h3 id="interview-title">💼 面试</h3>
                     <div class="interview-progress">
-                        <span id="interview-round">�?�?/span>
+                        <span id="interview-round">第1轮</span>
                         <span id="interview-company"></span>
                     </div>
                 </div>
@@ -213,4 +213,3 @@
     <script src="js/main.js"></script>
 </body>
 </html>
-
