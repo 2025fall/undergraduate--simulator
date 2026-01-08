@@ -24,6 +24,18 @@ class GameController {
         this.ui.elements.endMonthBtn.addEventListener('click', () => {
             this.openSettlementModal();
         });
+
+        if (this.ui.elements.lifestyleSelect) {
+            this.ui.elements.lifestyleSelect.addEventListener('change', (event) => {
+                if (!this.game.character) return;
+                const selected = event.target.value;
+                if (this.game.character.setPendingLifestyle(selected)) {
+                    const pending = this.game.character.getPendingLifestyleConfig();
+                    this.ui.addLog(`下季度生活方式切换为 ${pending.name}`, 'info');
+                    this.ui.updateLifestyle(this.game.character);
+                }
+            });
+        }
     }
     
     // 开始游戏
@@ -59,6 +71,10 @@ class GameController {
         this.ui.addLog(`📊 初始属性：GPA ${character.gpa.toFixed(2)} | 项目 ${character.project} | 八股 ${character.knowledge} | 软技能 ${character.softskill}`, 'info');
         const allowance = character.quarterlyAllowance || character.getFamilyConfig?.()?.quarterlyAllowance || 0;
         this.ui.addLog(`💰 初始资金：${character.money.toLocaleString()}元 | 季度补贴：${allowance.toLocaleString()}元`, 'info');
+        const lifestyle = character.getLifestyleConfig?.();
+        if (lifestyle) {
+            this.ui.addLog(`?? ???????${lifestyle.name}`, 'info');
+        }
         this.ui.addLog('💪 开始你的大学生涯吧！', 'info');
     }
     
@@ -155,25 +171,92 @@ class GameController {
         
         if (!result.success) {
             this.ui.addLog(result.message, 'danger');
-            this.game.character.modifySanity(-5);  // 简历被拒也扣心态
+            this.game.character.modifySanity(-5);  // ????????
             this.ui.updateResources(this.game.character);
             this.renderActions();
             return;
         }
+
+        if (type === 'fulltime' && this.game.currentQuarter >= 13) {
+            this.promptInterviewTravel(result);
+            return;
+        }
         
+        this.beginInterview(result);
+    }
+
+    beginInterview(result) {
         this.ui.addLog(result.message, 'success');
         this.ui.updateInterviewCompany(result.company.name);
         if (result.usedFreePass) {
-            this.ui.addLog('🎟️ 启动T1免试券，直接敲开大厂大门', 'info');
+            this.ui.addLog('?? ??T1????????????', 'info');
+        }
+        if (result.suitPenalty) {
+            this.ui.addLog('?? ?????????? -20', 'warning');
         }
         this.ui.updateInterviewPressure(result.pressure);
         
-        // 显示第一个问题
+        // ???????
         this.showNextInterviewQuestion();
     }
-    
-    // 显示下一个面试问题
-    showNextInterviewQuestion() {
+
+    promptInterviewTravel(result) {
+        const company = result.company;
+        const geoConfig = CONFIG.GEOGRAPHY[company.geography] || { name: '??' };
+        const [minCost, maxCost] = CONFIG.INTERVIEW_COSTS.travelRange;
+        let travelCost = Math.floor(minCost + Math.random() * (maxCost - minCost));
+        if (company.geography === 'near') {
+            travelCost = Math.max(minCost, Math.floor(travelCost * 0.7));
+        } else if (company.geography === 'remote') {
+            travelCost = Math.min(maxCost, Math.floor(travelCost * 1.1));
+        }
+
+        const event = {
+            title: '?? ?????',
+            description: `????${geoConfig.name}????????? ?${travelCost} ???`,
+            choices: [
+                { text: `?????-?${travelCost}?` },
+                { text: '?????' },
+                { text: '??????' }
+            ]
+        };
+
+        this.ui.showEvent(event, (choiceIndex) => {
+            if (choiceIndex === 0) {
+                if (this.game.character.money < travelCost) {
+                    this.ui.addLog('?? ???????????', 'danger');
+                    this.game.interviewSystem.cancelInterview();
+                    this.renderActions();
+                    return;
+                }
+                this.game.character.modifyMoney(-travelCost);
+                this.ui.addLog(`?? ??????? -${travelCost}?`, 'info');
+                this.ui.updateResources(this.game.character);
+                this.beginInterview(result);
+                return;
+            }
+
+            if (choiceIndex === 2) {
+                const baseChance = CONFIG.INTERVIEW_COSTS.onlineBaseChance;
+                const softskill = this.game.character.softskill;
+                const chance = Math.min(0.85, baseChance + softskill / CONFIG.INTERVIEW_COSTS.onlineSoftskillScale);
+                if (Math.random() < chance) {
+                    this.ui.addLog('?? ????????', 'success');
+                    this.beginInterview(result);
+                } else {
+                    this.ui.addLog('? ?????????????', 'danger');
+                    this.game.interviewSystem.cancelInterview();
+                    this.renderActions();
+                }
+                return;
+            }
+
+            this.ui.addLog('?? ????????', 'warning');
+            this.game.interviewSystem.cancelInterview();
+            this.renderActions();
+        });
+    }
+showNextInterviewQuestion() {
         const question = this.game.getInterviewQuestion();
         const progress = this.game.interviewSystem.getProgress();
         
@@ -212,10 +295,11 @@ class GameController {
                     this.ui.addLog(`📍 ${geoConfig.icon} ${geoConfig.name} - ${geoConfig.description}`, 'info');
                     
                     // v1.3 提示地理影响
-                    if (interviewResult.geography === 'far') {
-                        this.ui.addLog(`⚠️ 远距离通勤会扣心态，可选择租房(${CONFIG.GEOGRAPHY.far.rentOption}元/月)`, 'warning');
-                    } else if (interviewResult.geography === 'remote') {
-                        this.ui.addLog(`⚠️ 异地实习需要租房，每月额外开销2000-4000元`, 'warning');
+                    const rentCost = interviewResult.company?.rentCostQuarter;
+                    if (interviewResult.geography === 'far' && rentCost) {
+                        this.ui.addLog(`?? ???????????????(?${rentCost}/?)`, 'warning');
+                    } else if (interviewResult.geography === 'remote' && rentCost) {
+                        this.ui.addLog(`?? ????????? ?${rentCost} / ?`, 'warning');
                     }
                 } else {
                     this.ui.addLog(`💰 岗位：${jobConfig?.name || '研发'} | 年薪 ${interviewResult.salary}w`, 'info');
@@ -237,51 +321,81 @@ class GameController {
     // 去实习
     goInternship(special) {
         const company = special.company;
-        
-        // v1.3 设置实习状态（包括地理信息）
+
+        // v1.3 ??????????????
         const geography = company.geography || 'near';
         const geoConfig = this.game.startInternship(company, geography);
-        
-        this.ui.addLog(`🏢 开始在 ${company.name} 实习...`, 'info');
-        this.ui.addLog(`📍 ${geoConfig.icon} ${geoConfig.name}`, 'info');
-        
-        // v1.3 如果是异地，显示租房费用
+
+        this.ui.addLog(`??? ${company.name} ??...`, 'info');
+        this.ui.addLog(`${geoConfig.icon} ${geoConfig.name}`, 'info');
+
         if (geography === 'remote') {
-            this.ui.addLog(`🏠 已租房，每月租金 ${this.game.character.rentCost}元`, 'warning');
+            const rentCost = this.game.character.rentCost;
+            if (rentCost > 0) {
+                this.ui.addLog(`???????? ${rentCost}?`, 'warning');
+            }
         }
-        
-        const skipTimes = special.skipQuarters || 1;
-        let result = null;
-        for (let i = 0; i < skipTimes; i++) {
-            result = this.game.skipQuarter(true);
-            result.results.forEach(r => {
-                this.ui.addLog(`   ${r}`, 'info');
+
+        const proceedInternship = () => {
+            const skipTimes = special.skipQuarters || 1;
+            let result = null;
+            for (let i = 0; i < skipTimes; i++) {
+                result = this.game.skipQuarter(true);
+                result.results.forEach(r => {
+                    this.ui.addLog(`   ${r}`, 'info');
+                });
+                if (result.endCheck) break;
+            }
+
+            // v1.3 ??GPA???3??????????????
+            const gpaPenalty = -0.8;
+            this.game.character.modifyGPA(gpaPenalty);
+            this.ui.addLog(`???????GPA ${gpaPenalty}`, 'warning');
+
+            this.ui.addLog('???????????????', 'success');
+
+            // ??UI
+            this.ui.updateAll(this.game);
+            this.renderActions();
+
+            // ????????
+            if (result?.isGameOver) {
+                this.handleGameEnd(result.endCheck);
+                return;
+            }
+            if (result.endCheck && result.endCheck.type !== 'mental_breakdown') {
+                this.handleGameEnd(result.endCheck);
+            }
+        };
+
+        if (geography === 'far' && !this.game.character.isRenting) {
+            const rentCost = company.rentCostQuarter || this.game.rollQuarterlyRent(CONFIG.GEOGRAPHY.far?.rentRange);
+            company.rentCostQuarter = rentCost;
+            const event = {
+                title: '????',
+                description: `??????????????? ?${rentCost} / ??`,
+                choices: [
+                    { text: `???-?${rentCost}?` },
+                    { text: '????' }
+                ]
+            };
+
+            this.ui.showEvent(event, (choiceIndex) => {
+                if (choiceIndex === 0) {
+                    if (this.game.character.money < rentCost) {
+                        this.ui.addLog('???????????', 'danger');
+                    } else {
+                        this.game.character.setRenting(true, rentCost);
+                        this.ui.addLog(`???????? ${rentCost}?`, 'warning');
+                    }
+                }
+                proceedInternship();
             });
-            if (result.endCheck) break;
-        }
-        
-        // v1.3 实习GPA惩罚（3个月不上课，期末大概率挂科）
-        const gpaPenalty = -0.8;
-        this.game.character.modifyGPA(gpaPenalty);
-        this.ui.addLog(`📉 实习期间缺课，GPA ${gpaPenalty}`, 'warning');
-        
-        this.ui.addLog(`✅ 实习结束！获得了宝贵的工作经验`, 'success');
-        
-        // 更新UI
-        this.ui.updateAll(this.game);
-        this.renderActions();
-        
-        // 检查游戏是否结束
-        if (result?.isGameOver) {
-            this.handleGameEnd(result.endCheck);
             return;
         }
-        if (result.endCheck && result.endCheck.type !== 'mental_breakdown') {
-            this.handleGameEnd(result.endCheck);
-        }
+
+        proceedInternship();
     }
-    
-    // 结束本季
     endQuarter() {
         const result = this.game.endQuarter();
         

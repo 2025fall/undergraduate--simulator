@@ -18,14 +18,31 @@ class ActionSystem {
             
             // 特殊条件检查
             let specialCondition = true;
+            let housingCondition = true;
+            let housingDeposit = 0;
             if (action.requireOffer === 'internship' && !this.game.hasInternshipOffer) {
                 specialCondition = false;
+            }
+            if (action.requiresHousingDeposit) {
+                housingDeposit = this.game.getInternshipHousingRequirement();
+                if (housingDeposit > 0 && this.game.character.money < housingDeposit) {
+                    housingCondition = false;
+                }
             }
             
             actions.push({
                 ...action,
-                available: available && canAffordEnergy && canAffordMoney && sanityOK && specialCondition,
-                reason: this.getUnavailableReason(action, available, canAffordEnergy, canAffordMoney, sanityOK, specialCondition)
+                available: available && canAffordEnergy && canAffordMoney && sanityOK && specialCondition && housingCondition,
+                reason: this.getUnavailableReason(
+                    action,
+                    available,
+                    canAffordEnergy,
+                    canAffordMoney,
+                    sanityOK,
+                    specialCondition,
+                    housingCondition,
+                    housingDeposit
+                )
             });
         }
         
@@ -33,7 +50,7 @@ class ActionSystem {
     }
     
     // 获取不可用原因
-    getUnavailableReason(action, available, canAffordEnergy, canAffordMoney, sanityOK, specialCondition) {
+    getUnavailableReason(action, available, canAffordEnergy, canAffordMoney, sanityOK, specialCondition, housingCondition, housingDeposit) {
         if (!available) {
             if (action.id === 'applyInternship' || action.id === 'goInternship') {
                 return '大三才能解锁';
@@ -48,6 +65,9 @@ class ActionSystem {
         }
         if (!canAffordMoney) {
             return '金钱不足';
+        }
+        if (!housingCondition) {
+            return housingDeposit > 0 ? `启动资金不足（需${housingDeposit}元）` : '启动资金不足';
         }
         if (!sanityOK) {
             return '心态过低';
@@ -142,6 +162,11 @@ class ActionSystem {
                 this.game.character.addResumeItem(mentorCfg.reward);
                 results.push(`🎯 智商奇遇：${mentorCfg.reward}`);
             }
+        }
+
+        if (action.id === 'buySuit') {
+            this.game.character.hasInterviewSuit = true;
+            results.push('?? ???????');
         }
 
         // 检查简历亮点获取

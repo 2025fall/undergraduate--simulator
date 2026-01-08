@@ -16,7 +16,7 @@
                 <p class="game-desc">从大一萌新到秋招卷王，你能顶住内卷的压力吗？</p>
             </div>
             <button id="start-btn" class="btn btn-primary btn-large">开始游戏</button>
-            <div class="version-info">v2.1 · 心态真实进阶</div>
+            <div class="version-info">v2.3 · 经济系统重构</div>
         </div>
 
         <!-- 角色选择界面 -->
@@ -75,6 +75,18 @@
                         <div class="resource-item">
                             <span class="resource-label">💰 金钱</span>
                             <span id="money-text" class="resource-value money-value">0元</span>
+                        </div>
+                        <div class="resource-item lifestyle-item">
+                            <span class="resource-label">生活档位</span>
+                            <div class="lifestyle-controls">
+                                <select id="lifestyle-select" class="lifestyle-select">
+                                    <option value="survival">生存低保</option>
+                                    <option value="normal">普通生活</option>
+                                    <option value="premium">精致生活</option>
+                                </select>
+                                <span class="lifestyle-note">下季生效</span>
+                            </div>
+                            <span id="lifestyle-current" class="resource-value">本季：生存低保</span>
                         </div>
                     </div>
 

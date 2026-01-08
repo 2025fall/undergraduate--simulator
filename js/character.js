@@ -28,7 +28,10 @@ class Character {
         // Buff效果
         this.sanityRecoveryBonus = CONFIG.FAMILIES[this.familyType]?.sanityRecoveryBonus || 0;
         this.quarterlyAllowance = CONFIG.FAMILIES[this.familyType]?.quarterlyAllowance || 0;
-        this.quarterlyGap = CONFIG.FAMILIES[this.familyType]?.quarterlyGap || 0;
+        this.lifestyle = CONFIG.DEFAULT_LIFESTYLE || 'survival';
+        this.pendingLifestyle = this.lifestyle;
+        this.hasInterviewSuit = false;
+        this.graduationTag = null;
         
         // v1.3 经济系统
         this.money = CONFIG.FAMILIES[this.familyType]?.initialMoney || 5000;
@@ -55,6 +58,31 @@ class Character {
     // 获取家庭配置
     getFamilyConfig() {
         return CONFIG.FAMILIES[this.familyType];
+    }
+
+    // 获取生活方式配置
+    getLifestyleConfig() {
+        const fallback = CONFIG.LIFESTYLE_TIERS[CONFIG.DEFAULT_LIFESTYLE];
+        return CONFIG.LIFESTYLE_TIERS[this.lifestyle] || fallback;
+    }
+
+    getPendingLifestyleConfig() {
+        const fallback = CONFIG.LIFESTYLE_TIERS[CONFIG.DEFAULT_LIFESTYLE];
+        return CONFIG.LIFESTYLE_TIERS[this.pendingLifestyle] || fallback;
+    }
+
+    // 设置下季度生活方式
+    setPendingLifestyle(lifestyleId) {
+        if (CONFIG.LIFESTYLE_TIERS[lifestyleId]) {
+            this.pendingLifestyle = lifestyleId;
+            return true;
+        }
+        return false;
+    }
+
+    // 应用下季度生活方式
+    applyPendingLifestyle() {
+        this.lifestyle = this.pendingLifestyle;
     }
     
     // 获取经验倍率（基于IQ）
@@ -238,7 +266,11 @@ class Character {
             sanity: this.sanity,
             money: this.money,
             isOnBudget: this.isOnBudget,
-            resumeItems: this.resumeItems
+            resumeItems: this.resumeItems,
+            lifestyle: this.lifestyle,
+            pendingLifestyle: this.pendingLifestyle,
+            hasInterviewSuit: this.hasInterviewSuit,
+            graduationTag: this.graduationTag
         };
     }
 }

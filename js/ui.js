@@ -32,6 +32,8 @@ class UIController {
             sanityBar: document.getElementById('sanity-bar'),
             sanityText: document.getElementById('sanity-text'),
             moneyText: document.getElementById('money-text'),
+            lifestyleSelect: document.getElementById('lifestyle-select'),
+            lifestyleCurrent: document.getElementById('lifestyle-current'),
             
             // 属性
             statGpa: document.getElementById('stat-gpa'),
@@ -240,6 +242,24 @@ class UIController {
             const moneyEl = this.elements.moneyText;
             moneyEl.classList.toggle('money-warning', character.money < 0);
             moneyEl.classList.toggle('money-critical', character.money >= 0 && character.money < 1000);
+        }
+
+        this.updateLifestyle(character);
+    }
+
+    updateLifestyle(character) {
+        if (!this.elements.lifestyleSelect || !this.elements.lifestyleCurrent) return;
+        const current = character.getLifestyleConfig?.();
+        const pending = character.getPendingLifestyleConfig?.();
+        if (pending?.id) {
+            this.elements.lifestyleSelect.value = pending.id;
+        }
+        if (current?.name) {
+            let label = `本季：${current.name}`;
+            if (pending?.name && pending.name !== current.name) {
+                label += ` | 下季：${pending.name}`;
+            }
+            this.elements.lifestyleCurrent.textContent = label;
         }
     }
     

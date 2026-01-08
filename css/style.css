@@ -395,6 +395,39 @@ body {
     font-size: 1rem;
 }
 
+.lifestyle-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.lifestyle-select {
+    flex: 1;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+}
+
+.lifestyle-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.lifestyle-note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.lifestyle-item .resource-value {
+    display: block;
+    margin-top: 6px;
+}
+
 /* 省吃俭用状态警告样式 */
 .money-warning {
     color: var(--danger-color);

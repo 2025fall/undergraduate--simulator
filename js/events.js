@@ -136,6 +136,10 @@ class EventSystem {
             this.game.forcedEnding = choice.setEnding;
             results.push('🎓 已确定发展路线');
         }
+        if (choice.setGraduationTag) {
+            this.game.character.graduationTag = choice.setGraduationTag;
+            results.push(`\u83b7\u5f97\u6807\u7b7e\uFF1A${choice.setGraduationTag}`);
+        }
         
         return results;
     }

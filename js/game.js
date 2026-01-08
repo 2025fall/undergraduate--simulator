@@ -109,12 +109,43 @@ class Game {
             this.character.modifyMoney(allowance);
             results.push(`家庭补贴 +${allowance}元`);
         }
-        this.character.modifyMoney(-CONFIG.QUARTERLY_EXPENSE);
-        results.push(`基础生活消耗 -${CONFIG.QUARTERLY_EXPENSE}元`);
+        const lifestyle = this.character.getLifestyleConfig();
+        const lifestyleCost = lifestyle?.quarterlyCost || 0;
+        if (lifestyleCost > 0) {
+            this.character.modifyMoney(-lifestyleCost);
+            results.push(`生活方式(${lifestyle.name}) -${lifestyleCost}元`);
+        }
 
-        if (familyConfig?.quarterlyGap) {
-            this.character.modifyMoney(-familyConfig.quarterlyGap);
-            results.push(`刚需缺口 -${familyConfig.quarterlyGap}元`);
+        if (this.character.isRenting && this.character.rentCost > 0) {
+            this.character.modifyMoney(-this.character.rentCost);
+            results.push(`租房支出 -${this.character.rentCost}元`);
+        }
+
+        const lifestyleSanity = this.getLifestyleSanityEffect();
+        if (lifestyleSanity !== 0) {
+            this.character.modifySanity(lifestyleSanity);
+            results.push(`生活方式心态 ${lifestyleSanity > 0 ? '+' : ''}${lifestyleSanity}`);
+        }
+    }
+
+    getLifestyleSanityEffect() {
+        const lifestyle = this.character.getLifestyleConfig();
+        if (!lifestyle) return 0;
+        const effect = lifestyle.sanityEffect;
+        if (typeof effect === 'number') {
+            return effect;
+        }
+        const stage = this.currentQuarter <= 8 ? 'early' : 'late';
+        return effect?.[stage] ?? 0;
+    }
+
+    advanceQuarter(results) {
+        const previousLifestyle = this.character.lifestyle;
+        this.currentQuarter++;
+        this.character.applyPendingLifestyle();
+        if (previousLifestyle !== this.character.lifestyle) {
+            const lifestyle = this.character.getLifestyleConfig();
+            results.push(`下季度生活方式切换为 ${lifestyle.name}`);
         }
     }
     
@@ -178,7 +209,7 @@ class Game {
             `🏥 因精神崩溃住院休学，跳过 Q${this.currentQuarter} 的全部行动`
         ];
 
-        this.currentQuarter++;
+        this.advanceQuarter(hospitalLogs);
         this.character.restoreEnergy();
 
         const recoverySanity = Math.max(40, Math.round(this.character.maxSanity * 0.6));
@@ -252,9 +283,30 @@ class Game {
         // 检查随机事件
         this.eventSystem.checkFamilySpecialEvent();
         this.eventSystem.checkRandomEvents();
+
+        if (this.currentQuarter === CONFIG.TOTAL_QUARTERS &&
+            !this.eventSystem.triggeredEvents.has('graduation_social')) {
+            this.eventSystem.addEvent({
+                id: 'graduation_social',
+                title: '🎓 毕业散伙饭',
+                description: '毕业季到了，要不要参加散伙饭和毕业照？',
+                choices: [
+                    {
+                        text: '参加（-500元，心态+20）',
+                        effects: { money: -500, sanity: 20 }
+                    },
+                    {
+                        text: '不参加（0元，心态-10）',
+                        effects: { sanity: -10 },
+                        setGraduationTag: '孤独的毕业生'
+                    }
+                ]
+            });
+            this.eventSystem.triggeredEvents.add('graduation_social');
+        }
         
         // 推进时间
-        this.currentQuarter++;
+        this.advanceQuarter(results);
         
         // 检查游戏结束条件
         const endCheck = this.checkEndConditions('quarter_end');
@@ -350,7 +402,7 @@ class Game {
         this.eventSystem.checkFamilySpecialEvent();
         this.eventSystem.checkRandomEvents();
 
-        this.currentQuarter++;
+        this.advanceQuarter(results);
         const endCheck = this.checkEndConditions('skip');
 
         if (isInternship) {
@@ -538,9 +590,17 @@ class Game {
     // 获取结局数据
     getEndingData() {
         const ending = this.calculateEnding();
+        const extraParts = [];
+        if (ending.extra) {
+            extraParts.push(ending.extra);
+        }
+        if (this.character.graduationTag) {
+            extraParts.push(`<p>🎓 标签：${this.character.graduationTag}</p>`);
+        }
         
         return {
             ...ending,
+            extra: extraParts.join(''),
             stats: {
                 gpa: this.character.gpa.toFixed(2),
                 project: this.character.project,
@@ -601,6 +661,22 @@ class Game {
         this.candidates = [];
     }
     
+    getInternshipHousingRequirement() {
+        if (!this.hasInternshipOffer || !this.internshipCompany) return 0;
+        if (this.internshipCompany.geography !== 'remote') return 0;
+        const geoConfig = CONFIG.GEOGRAPHY.remote;
+        const rentCost = this.internshipCompany.rentCostQuarter ||
+            this.rollQuarterlyRent(geoConfig?.rentRange);
+        this.internshipCompany.rentCostQuarter = rentCost;
+        return rentCost || 0;
+    }
+
+    rollQuarterlyRent(range) {
+        if (!Array.isArray(range) || range.length < 2) return 0;
+        const [minCost, maxCost] = range;
+        return Math.floor(minCost + Math.random() * (maxCost - minCost));
+    }
+
     // v1.3 开始实习
     startInternship(company, geography) {
         this.isInternship = true;
@@ -610,11 +686,11 @@ class Game {
         // 处理地理位置
         const geoConfig = CONFIG.GEOGRAPHY[geography];
         if (geography === 'remote') {
-            // 异地必须租房
-            const rentCost = Array.isArray(geoConfig.rentCost) 
-                ? geoConfig.rentCost[0] + Math.random() * (geoConfig.rentCost[1] - geoConfig.rentCost[0])
-                : geoConfig.rentCost;
-            this.character.setRenting(true, Math.floor(rentCost));
+            // 异地必须租房（季度预付）
+            const rentCost = company?.rentCostQuarter ||
+                this.rollQuarterlyRent(geoConfig?.rentRange);
+            this.internshipCompany.rentCostQuarter = rentCost;
+            this.character.setRenting(true, rentCost);
         }
         
         return geoConfig;
@@ -623,7 +699,9 @@ class Game {
     // v1.3 选择租房（远距离通勤时可选）
     chooseToRent() {
         if (this.character.commuteType === 'far') {
-            const rentCost = CONFIG.GEOGRAPHY.far.rentOption;
+            const rentCost = this.internshipCompany?.rentCostQuarter ||
+                this.rollQuarterlyRent(CONFIG.GEOGRAPHY.far?.rentRange);
+            this.internshipCompany.rentCostQuarter = rentCost;
             this.character.setRenting(true, rentCost);
             return rentCost;
         }

@@ -11,8 +11,34 @@ const CONFIG = {
     // v1.4 心态自然衰减（统一30/季度）
     SANITY_DECAY: 30,
     
-    // v1.4 基础生活开销（每季度）
-    QUARTERLY_EXPENSE: 2400,
+    // v2.3 生活方式档位（季度消耗 + 心态影响）
+    LIFESTYLE_TIERS: {
+        survival: {
+            id: 'survival',
+            name: '生存低保',
+            quarterlyCost: 2400,
+            sanityEffect: { early: 0, late: -15 }
+        },
+        normal: {
+            id: 'normal',
+            name: '普通生活',
+            quarterlyCost: 4500,
+            sanityEffect: 5
+        },
+        premium: {
+            id: 'premium',
+            name: '精致生活',
+            quarterlyCost: 9000,
+            sanityEffect: 20
+        }
+    },
+    DEFAULT_LIFESTYLE: 'survival',
+    INTERVIEW_COSTS: {
+        travelRange: [200, 1000],
+        onlineBaseChance: 0.35,
+        onlineSoftskillScale: 300
+    },
+    SUIT_COST: 1000,
     // v1.4 枯燥惩罚（当季度无娱乐消费）
     BOREDOM_PENALTY: 20,
     
@@ -38,7 +64,7 @@ const CONFIG = {
         }
     },
     
-    // v1.3 地理标签配置（数值调整）
+    // v2.3 地理标签配置（租房成本按季度）
     GEOGRAPHY: {
         'near': {
             name: '同城-近距离',
@@ -56,7 +82,7 @@ const CONFIG = {
             energyPenalty: 20,   // 精力上限-20
             sanityPenalty: 10,   // 心态-10/月
             rentCost: 0,
-            rentOption: 2000,
+            rentRange: [4500, 8000],
             description: '通勤折磨，精力-20，心态-10/月'
         },
         'remote': {
@@ -65,8 +91,8 @@ const CONFIG = {
             probability: 0.3,
             energyPenalty: 0,
             sanityPenalty: 0,
-            rentCost: [1500, 3500],  // 调整为1500-3500
-            description: '必须租房(1500-3500元/月)'
+            rentRange: [4500, 10000],
+            description: '必须租房(4500-10000元/季)'
         }
     },
     
@@ -209,9 +235,8 @@ const CONFIG = {
             initialMoney: 1000,
             quarterlyAllowance: 3600,
             luxuryAccess: false,
-            quarterlyGap: 1200,
             specialEvent: null,
-            description: '早当家：精力上限120，但每季度有1200缺口'
+            description: '早当家：精力上限120，季补有限需精打细算'
         }
     },
     
@@ -430,6 +455,7 @@ const ACTIONS = {
         },
         skipQuarters: 1,
         requireOffer: 'internship',
+        requiresHousingDeposit: true,
         resumeItem: '💼 大厂实习经历',
         available: (game) => game.currentQuarter >= 9 && game.hasInternshipOffer
     },
@@ -445,6 +471,16 @@ const ACTIONS = {
         interviewType: 'fulltime',
         available: (game) => game.currentQuarter >= 13
     },
+    buySuit: {
+        id: 'buySuit',
+        name: '?? ??????',
+        description: '????????????????',
+        energyCost: 0,
+        moneyCost: CONFIG.SUIT_COST,
+        effects: {},
+        available: (game) => game.currentQuarter >= 13 && !game.character.hasInterviewSuit
+    },
+
     prepareGraduate: {
         id: 'prepareGraduate',
         name: '📚 图书馆考研',

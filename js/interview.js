@@ -29,6 +29,7 @@ class InterviewSystem {
             company,
             roundSequence: this.createRoundSequence(company),
             usedFreePass: !!options.forceTier1,
+            suitPenalty,
             completed: false,
             passed: false
         };
@@ -37,6 +38,12 @@ class InterviewSystem {
         this.questionsAsked = [];
         this.currentPressure = Math.max(0, 20 - this.game.character.getInterviewPressureBonus());
         this.pressureLimit = 100 + Math.max(0, (this.game.character.maxSanity - CONFIG.MAX_SANITY) / 2);
+        const suitPenalty = type === 'fulltime' &&
+            company.tier === 'T1' &&
+            !this.game.character.hasInterviewSuit;
+        if (suitPenalty) {
+            this.pressureLimit = Math.max(60, this.pressureLimit - 20);
+        }
 
         return {
             success: true,
@@ -89,12 +96,21 @@ class InterviewSystem {
         const jobTypes = company.jobTypes || ['backend', 'frontend'];
         const jobType = jobTypes[Math.floor(Math.random() * jobTypes.length)];
         const geography = this.generateGeography();
+        const geoConfig = CONFIG.GEOGRAPHY[geography];
+        const rentCostQuarter = this.rollRentCost(geoConfig?.rentRange);
 
         return {
             ...company,
             jobType,
-            geography
+            geography,
+            rentCostQuarter
         };
+    }
+
+    rollRentCost(range) {
+        if (!Array.isArray(range) || range.length < 2) return 0;
+        const [minCost, maxCost] = range;
+        return Math.floor(minCost + Math.random() * (maxCost - minCost));
     }
 
     generateGeography() {
@@ -219,6 +235,14 @@ class InterviewSystem {
         this.currentPressure = 0;
         this.pressureLimit = 100;
         return result;
+    }
+
+    cancelInterview() {
+        this.currentInterview = null;
+        this.currentRound = 0;
+        this.questionsAsked = [];
+        this.currentPressure = 0;
+        this.pressureLimit = 100;
     }
 
     getInterviewResult() {
